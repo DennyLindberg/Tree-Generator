@@ -10,12 +10,14 @@
 
 // Application includes
 #include "opengl/window.h"
-#include "opengl/data.h"
+#include "opengl/mesh.h"
+#include "opengl/texture.h"
+#include "opengl/program.h"
 #include "opengl/screenshot.h"
 #include "core/clock.h"
 #include "core/randomization.h"
 #include "core/threads.h"
-
+#include "core/utilities.h"
 
 /*
 	Program configurations
@@ -26,49 +28,36 @@ static const unsigned int SCREEN_WIDTH = 640;
 static const unsigned int SCREEN_HEIGHT = 480;
 static const float CAMERA_FOV = 90.0f;
 
-
-UniformRandomGenerator uniformGenerator;
-std::string TimeString(double time)
-{
-	int seconds = int(time);
-	int minutes = seconds / 60;
-	int hours = minutes / 60;
-	double decimals = time - double(seconds);
-
-	return std::to_string(hours) + "h " + std::to_string(minutes % 60) + "m " + std::to_string(seconds % 60) + "." + std::to_string(int(decimals*10.0)) + "s";
-}
-std::string FpsString(double deltaTime)
-{ 
-	if (deltaTime == 0)
-	{
-		return "Inf";
-	}
-	else
-	{
-		return std::to_string(int(round(1.0 / deltaTime))); 
-	}
-}
-
+/*
+	Application
+*/
 int main()
 {
+	UniformRandomGenerator uniformGenerator;
+	ApplicationClock clock;
+
 	OpenGLWindow window(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_FULLSCREEN, SCREEN_VSYNC);
 	window.SetTitle("Plant Generation");
 	window.SetClearColor(0.0, 0.0, 0.0, 1.0f);
 
-	ApplicationClock clock;
+	GLuint defaultVao = 0;
+	glGenVertexArrays(1, &defaultVao);
+	glBindVertexArray(defaultVao);
+
+	GLTexture texture{int(SCREEN_WIDTH), int(SCREEN_HEIGHT)};
+	texture.FillDebug();
+	texture.SendToGPU();
+	texture.UseForDrawing();
+	GLQuad fullscreenQuad{};
+
+	GLTexturedProgram shaderProgram{};
 
 	double lastScreenUpdate = clock.time;
 	bool quit = false;
 	while (!quit)
 	{
 		clock.Tick();
-
-		double screenUpdateDelta = clock.time - lastScreenUpdate;
-		window.SetTitle("Time: " + TimeString(clock.time) + ", FPS: " + FpsString(screenUpdateDelta));
-		lastScreenUpdate = clock.time;
-
-		window.SetClearColor((sinf(float(clock.time))+1.0f)/2.0f, 0.0, 0.0, 1.0f);
-		window.Clear();
+		window.SetTitle("Time: " + TimeString(clock.time) + ", FPS: " + FpsString(clock.deltaTime));
 
 		SDL_Event event;
 		while (SDL_PollEvent(&event))
@@ -91,6 +80,10 @@ int main()
 			}
 		}
 
+		window.SetClearColor((sinf(float(clock.time))+1.0f)/2.0f, 0.0, 0.0, 1.0f);
+		window.Clear();
+		shaderProgram.Use();
+		fullscreenQuad.Draw();
 		window.SwapFramebuffer();
 	}
 

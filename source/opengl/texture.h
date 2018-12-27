@@ -2,7 +2,7 @@
 #include <vector>
 #include "glad/glad.h"
 
-class GLImageBuffer
+class GLTexture
 {
 public:
 	std::vector<GLubyte> glData; // vector is used to simplify load/save with lodepng
@@ -14,8 +14,8 @@ public:
 	int height = 0;
 
 public:
-	GLImageBuffer(int imageWidth, int imageHeight)
-		: width{ imageWidth }, height{ imageHeight }
+	GLTexture(int textureWidth, int textureHeight)
+		: width{ textureWidth }, height{ textureHeight }
 	{
 		numPixels = width * height;
 		size = numPixels * 4;
@@ -30,7 +30,7 @@ public:
 		UpdateParameters();
 	}
 
-	~GLImageBuffer()
+	~GLTexture()
 	{
 		glDeleteTextures(1, &textureId);
 	}
@@ -51,38 +51,4 @@ public:
 	void FillDebug();
 	void SaveAsPNG(std::string filename, bool incrementNewFile = false);
 	void LoadPNG(std::string filename);
-};
-
-class GLQuad
-{
-protected:
-	GLuint positionBuffer = 0;
-	GLuint texCoordBuffer = 0;
-
-	GLuint glProgram = 0;
-
-public:
-	GLQuad();
-
-	~GLQuad();
-
-	void Draw();
-
-protected:
-	void CreateMeshBuffer();
-
-	template <class T>
-	void BufferVector(GLenum glBufferType, const std::vector<T>& vector, GLenum usage)
-	{
-		if (vector.size() > 0)
-		{
-			glBufferData(glBufferType, vector.size() * sizeof(T), &vector.front(), usage);
-		}
-		else
-		{
-			glBufferData(glBufferType, 0, NULL, usage);
-		}
-	}
-
-	void CreateShaders();
 };

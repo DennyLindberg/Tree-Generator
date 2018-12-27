@@ -90,9 +90,5 @@ void OpenGLWindow::Initialize()
 	int w, h;
 	SDL_GetWindowSize(window, &w, &h);
 	glViewport(0, 0, w, h);
-
-	GLuint vao = 0;
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
 }
 
