@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include "glad/glad.h"
+#include "../core/math.h"
 
 class GLTexture
 {
@@ -43,10 +44,16 @@ public:
 	void SetPixel(unsigned int x, unsigned int y, GLubyte r, GLubyte g, GLubyte b, GLubyte a);
 	void SetPixel(unsigned int x, unsigned int y, double r, double g, double b, double a);
 
+	void SetPixel(unsigned int x, unsigned int y, Color& color);
+	void SetPixel(unsigned int x, unsigned int y, FColor& color);
+
 	unsigned int PixelArrayIndex(unsigned int x, unsigned int y);
 
 	void UseForDrawing();
 	void CopyToGPU();
+
+	void Fill(Color& color);
+	void Fill(FColor& color);
 
 	void FillDebug();
 	void SaveAsPNG(std::string filename, bool incrementNewFile = false);

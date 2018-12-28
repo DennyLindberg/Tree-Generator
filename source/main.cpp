@@ -52,11 +52,14 @@ int main()
 	glBindVertexArray(defaultVao);
 
 	Canvas2D canvas{ {50, 50, 200, 100} };
-	std::shared_ptr<GLTexture> texture = canvas.GetTexture();
-	texture->FillDebug();
+	canvas.Fill(Color{255, 255, 255, 255});
+	canvas.DrawLine(0, 0, 50, 50, Color{0,0,0,255});
+	canvas.DrawLine(50, 50, 100, 50, Color{ 0,0,0,255 });
 
 	double lastScreenUpdate = clock.time;
 	bool quit = false;
+	int startX = 0;
+	int startY = 0;
 	while (!quit)
 	{
 		clock.Tick();
@@ -65,11 +68,14 @@ int main()
 		SDL_Event event;
 		while (SDL_PollEvent(&event))
 		{
-			if (event.type == SDL_QUIT)
+			switch (event.type)
+			{
+			case SDL_QUIT:
 			{
 				quit = true;
+				break;
 			}
-			else if (event.type == SDL_KEYDOWN)
+			case SDL_KEYDOWN:
 			{
 				switch (event.key.keysym.sym)
 				{
@@ -81,12 +87,35 @@ int main()
 					break;
 				}
 			}
+			case SDL_MOUSEBUTTONDOWN:
+			case SDL_MOUSEMOTION:
+			{
+				SDL_MouseButtonEvent& b = event.button;
+				if (b.button == SDL_BUTTON_LEFT) 
+				{
+					int mouseWindowX = 0;
+					int mouseWindowY = 0;
+					SDL_GetMouseState(&mouseWindowX, &mouseWindowY);
+
+					int canvasMouseX = mouseWindowX - 50;
+					int canvasMouseY = mouseWindowY - 50;
+					canvas.DrawLine(startX, startY, canvasMouseX, canvasMouseY, Color{ 0,0,0,255 });
+					
+					startX = canvasMouseX;
+					startY = canvasMouseY;
+				}
+			}
+			default:
+			{
+
+			}
+			}
 		}
 
 		window.SetClearColor((sinf(float(clock.time))+1.0f)/2.0f, 0.0, 0.0, 1.0f);
 		window.Clear();
 
-		canvas.Draw();
+		canvas.RenderToScreen();
 
 		window.SwapFramebuffer();
 	}

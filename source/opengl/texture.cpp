@@ -37,7 +37,31 @@ void GLTexture::SetPixel(unsigned int x, unsigned int y, double r, double g, dou
 	r = std::max(std::min(1.0, r), 0.0);
 	g = std::max(std::min(1.0, g), 0.0);
 	b = std::max(std::min(1.0, b), 0.0);
+	a = std::max(std::min(1.0, a), 0.0);
 	SetPixel(x, y, GLubyte(r*255.0), GLubyte(g*255.0), GLubyte(b*255.0), GLubyte(a*255.0));
+}
+
+void GLTexture::SetPixel(unsigned int x, unsigned int y, Color& color)
+{
+	unsigned int pixelIndex = PixelArrayIndex(x, y);
+	glData[pixelIndex + 0] = color.r;
+	glData[pixelIndex + 1] = color.g;
+	glData[pixelIndex + 2] = color.b;
+	glData[pixelIndex + 3] = color.a;
+}
+
+void GLTexture::SetPixel(unsigned int x, unsigned int y, FColor& color)
+{
+	GLubyte r = std::max(std::min(1.0f, color.r), 0.0f);
+	GLubyte g = std::max(std::min(1.0f, color.g), 0.0f);
+	GLubyte b = std::max(std::min(1.0f, color.b), 0.0f);
+	GLubyte a = std::max(std::min(1.0f, color.a), 0.0f);
+
+	unsigned int pixelIndex = PixelArrayIndex(x, y);
+	glData[pixelIndex + 0] = r;
+	glData[pixelIndex + 1] = g;
+	glData[pixelIndex + 2] = b;
+	glData[pixelIndex + 3] = a;
 }
 
 unsigned int GLTexture::PixelArrayIndex(unsigned int x, unsigned int y)
@@ -55,6 +79,34 @@ void GLTexture::CopyToGPU()
 {
 	glBindTexture(GL_TEXTURE_2D, textureId);
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, PIXEL_FORMAT, PIXEL_TYPE, (GLvoid*)glData.data());
+}
+
+void GLTexture::Fill(Color& color)
+{
+	for (int x = 0; x < width; ++x)
+	{
+		for (int y = 0; y < height; ++y)
+		{
+			SetPixel(x, y, color);
+		}
+	}
+}
+
+void GLTexture::Fill(FColor& color)
+{
+	Color remapped;
+	remapped.r = std::max(std::min(1.0f, color.r), 0.0f);
+	remapped.g = std::max(std::min(1.0f, color.g), 0.0f);
+	remapped.b = std::max(std::min(1.0f, color.b), 0.0f);
+	remapped.a = std::max(std::min(1.0f, color.a), 0.0f);
+
+	for (int x = 0; x < width; ++x)
+	{
+		for (int y = 0; y < height; ++y)
+		{
+			SetPixel(x, y, remapped);
+		}
+	}
 }
 
 void GLTexture::FillDebug()

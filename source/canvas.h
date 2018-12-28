@@ -20,8 +20,15 @@ public:
 		return texture;
 	}
 
-	void Draw();
+	void RenderToScreen();
 
 protected:
 	void Initialize(GLQuadProperties properties);
+
+/*
+	Canvas drawing methods
+*/
+public:
+	void Fill(Color& color);
+	void DrawLine(unsigned int startX, unsigned int startY, unsigned int endX, unsigned int endY, Color& color);
 };
