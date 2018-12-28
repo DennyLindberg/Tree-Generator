@@ -16,7 +16,7 @@ void Turtle2D::Draw(Canvas2D& canvas, std::string& symbols, glm::fvec2 startPosi
 
 	for (char& c : symbols)
 	{
-		if (actions.at(c))
+		if (actions.count(c))
 		{
 			actions[c](*this, canvas);
 		}

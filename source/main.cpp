@@ -56,9 +56,12 @@ int main()
 
 	Canvas2D canvas;
 	canvas.Fill(Color{255, 255, 255, 255});
-	DrawFractalTree(canvas, 6, 6.0f, glm::fvec2(WINDOW_WIDTH / 2, WINDOW_HEIGHT), 90);
+	DrawFractalTree(canvas, 6, 3.0f, glm::fvec2(WINDOW_WIDTH * 0.45, WINDOW_HEIGHT), 90);
 	DrawKochCurve(canvas, 4, 3.0f, glm::fvec2(0, WINDOW_HEIGHT), 0);
-	
+	DrawSierpinskiTriangle(canvas, 5, 8.0f, glm::fvec2(WINDOW_WIDTH, 0), -90);
+	DrawDragonCurve(canvas, 11, 4.0f, glm::fvec2(WINDOW_WIDTH * 0.9, WINDOW_HEIGHT*0.8), -90);
+	DrawFractalPlant(canvas, 6, 2.0f, glm::fvec2(0, WINDOW_HEIGHT*0.4), 0);
+
 	double lastScreenUpdate = clock.time;
 	bool quit = false;
 	int startX = 0;
