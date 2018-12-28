@@ -36,11 +36,11 @@ void Line(GLTexture& texture, float x1, float y1, float x2, float y2, ColorType&
 	{
 		if (steep)
 		{
-			texture.SetPixel(y, x, color);
+			texture.SetPixelSafe(y, x, color);
 		}
 		else
 		{
-			texture.SetPixel(x, y, color);
+			texture.SetPixelSafe(x, y, color);
 		}
 
 		error -= dy;

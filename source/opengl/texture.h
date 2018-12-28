@@ -47,6 +47,9 @@ public:
 	void SetPixel(unsigned int x, unsigned int y, Color& color);
 	void SetPixel(unsigned int x, unsigned int y, FColor& color);
 
+	void SetPixelSafe(int x, int y, Color& color);
+	void SetPixelSafe(int x, int y, FColor& color);
+
 	unsigned int PixelArrayIndex(unsigned int x, unsigned int y);
 
 	void UseForDrawing();

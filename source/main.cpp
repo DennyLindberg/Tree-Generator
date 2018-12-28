@@ -21,6 +21,9 @@
 #include "core/utilities.h"
 
 #include "canvas.h"
+#include "turtle.h"
+#include "lsystem.h"
+#include "examples.h"
 
 /*
 	Program configurations
@@ -51,11 +54,11 @@ int main()
 	glGenVertexArrays(1, &defaultVao);
 	glBindVertexArray(defaultVao);
 
-	Canvas2D canvas{ {50, 50, 200, 100} };
+	Canvas2D canvas;
 	canvas.Fill(Color{255, 255, 255, 255});
-	canvas.DrawLine(0, 0, 50, 50, Color{0,0,0,255});
-	canvas.DrawLine(50, 50, 100, 50, Color{ 0,0,0,255 });
-
+	DrawFractalTree(canvas, 6, 6.0f, glm::fvec2(WINDOW_WIDTH / 2, WINDOW_HEIGHT), 90);
+	DrawKochCurve(canvas, 4, 3.0f, glm::fvec2(0, WINDOW_HEIGHT), 0);
+	
 	double lastScreenUpdate = clock.time;
 	bool quit = false;
 	int startX = 0;
@@ -90,20 +93,20 @@ int main()
 			case SDL_MOUSEBUTTONDOWN:
 			case SDL_MOUSEMOTION:
 			{
-				SDL_MouseButtonEvent& b = event.button;
-				if (b.button == SDL_BUTTON_LEFT) 
-				{
-					int mouseWindowX = 0;
-					int mouseWindowY = 0;
-					SDL_GetMouseState(&mouseWindowX, &mouseWindowY);
+				//SDL_MouseButtonEvent& b = event.button;
+				//if (b.button == SDL_BUTTON_LEFT) 
+				//{
+				//	int mouseWindowX = 0;
+				//	int mouseWindowY = 0;
+				//	SDL_GetMouseState(&mouseWindowX, &mouseWindowY);
 
-					int canvasMouseX = mouseWindowX - 50;
-					int canvasMouseY = mouseWindowY - 50;
-					canvas.DrawLine(startX, startY, canvasMouseX, canvasMouseY, Color{ 0,0,0,255 });
-					
-					startX = canvasMouseX;
-					startY = canvasMouseY;
-				}
+				//	int canvasMouseX = mouseWindowX - 50;
+				//	int canvasMouseY = mouseWindowY - 50;
+				//	canvas.DrawLine(glm::ivec2{ startX, startY }, glm::ivec2{ canvasMouseX, canvasMouseY }, Color{ 0,0,0,255 });
+				//	
+				//	startX = canvasMouseX;
+				//	startY = canvasMouseY;
+				//}
 			}
 			default:
 			{

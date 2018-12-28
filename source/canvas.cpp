@@ -32,6 +32,11 @@ void Canvas2D::RenderToScreen()
 
 void Canvas2D::Initialize(GLQuadProperties properties)
 {
+	minX = properties.positionX;
+	minY = properties.positionY;
+	maxX = minX + properties.width;
+	maxY = minY + properties.height;
+
 	if (!canvasShader)
 	{
 		canvasShader = std::make_shared<GLTexturedProgram>();
@@ -50,8 +55,8 @@ void Canvas2D::Fill(Color& color)
 	texture->Fill(color);
 }
 
-void Canvas2D::DrawLine(unsigned int startX, unsigned int startY, unsigned int endX, unsigned int endY, Color& color)
+void Canvas2D::DrawLine(glm::fvec2 start, glm::fvec2 end, Color& color)
 {
 	bDirty = true;
-	Line(*texture, float(startX), float(startY), float(endX), float(endY), color);
+	Line(*texture, start.x, start.y, end.x, end.y, color);
 }

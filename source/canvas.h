@@ -1,6 +1,7 @@
 #pragma once
 #include "opengl/texture.h"
 #include "opengl/mesh.h"
+#include "core/math.h"
 #include <memory>
 
 class Canvas2D
@@ -9,6 +10,11 @@ protected:
 	bool bDirty = true;
 	std::shared_ptr<GLQuad> quad;
 	std::shared_ptr<GLTexture> texture;
+
+	int minX;
+	int maxX;
+	int minY;
+	int maxY;
 
 public:
 	Canvas2D();
@@ -30,5 +36,5 @@ protected:
 */
 public:
 	void Fill(Color& color);
-	void DrawLine(unsigned int startX, unsigned int startY, unsigned int endX, unsigned int endY, Color& color);
+	void DrawLine(glm::fvec2 start, glm::fvec2 end, Color& color);
 };

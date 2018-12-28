@@ -52,16 +52,27 @@ void GLTexture::SetPixel(unsigned int x, unsigned int y, Color& color)
 
 void GLTexture::SetPixel(unsigned int x, unsigned int y, FColor& color)
 {
-	GLubyte r = std::max(std::min(1.0f, color.r), 0.0f);
-	GLubyte g = std::max(std::min(1.0f, color.g), 0.0f);
-	GLubyte b = std::max(std::min(1.0f, color.b), 0.0f);
-	GLubyte a = std::max(std::min(1.0f, color.a), 0.0f);
-
 	unsigned int pixelIndex = PixelArrayIndex(x, y);
-	glData[pixelIndex + 0] = r;
-	glData[pixelIndex + 1] = g;
-	glData[pixelIndex + 2] = b;
-	glData[pixelIndex + 3] = a;
+	glData[pixelIndex + 0] = GLubyte(std::max(std::min(1.0f, color.r), 0.0f) * 255);
+	glData[pixelIndex + 1] = GLubyte(std::max(std::min(1.0f, color.g), 0.0f) * 255);
+	glData[pixelIndex + 2] = GLubyte(std::max(std::min(1.0f, color.b), 0.0f) * 255);
+	glData[pixelIndex + 3] = GLubyte(std::max(std::min(1.0f, color.a), 0.0f) * 255);
+}
+
+void GLTexture::SetPixelSafe(int x, int y, Color& color)
+{
+	if (x > 0 && y > 0 && x < width && y < height)
+	{
+		SetPixel(x, y, color);
+	}
+}
+
+void GLTexture::SetPixelSafe(int x, int y, FColor& color)
+{
+	if (x > 0 && y > 0 && x < width && y < height)
+	{
+		SetPixel(x, y, color);
+	}
 }
 
 unsigned int GLTexture::PixelArrayIndex(unsigned int x, unsigned int y)
@@ -95,10 +106,10 @@ void GLTexture::Fill(Color& color)
 void GLTexture::Fill(FColor& color)
 {
 	Color remapped;
-	remapped.r = std::max(std::min(1.0f, color.r), 0.0f);
-	remapped.g = std::max(std::min(1.0f, color.g), 0.0f);
-	remapped.b = std::max(std::min(1.0f, color.b), 0.0f);
-	remapped.a = std::max(std::min(1.0f, color.a), 0.0f);
+	remapped.r = GLubyte(std::max(std::min(1.0f, color.r), 0.0f) * 255);
+	remapped.g = GLubyte(std::max(std::min(1.0f, color.g), 0.0f) * 255);
+	remapped.b = GLubyte(std::max(std::min(1.0f, color.b), 0.0f) * 255);
+	remapped.a = GLubyte(std::max(std::min(1.0f, color.a), 0.0f) * 255);
 
 	for (int x = 0; x < width; ++x)
 	{
