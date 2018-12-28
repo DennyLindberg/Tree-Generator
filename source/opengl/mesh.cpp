@@ -1,11 +1,49 @@
 #include "mesh.h"
+#include "../core/application.h"
 
 #include <string>
 #include <iostream>
 
+void GLQuadProperties::MatchWindowDimensions()
+{
+	ApplicationSettings settings = GetApplicationSettings();
+	positionX = 0;
+	positionY = 0;
+	width = settings.windowWidth;
+	height = settings.windowHeight;
+
+}
+
 GLQuad::GLQuad()
 {
-	CreateMeshBuffer();
+	CreateMeshBuffer(MeshBufferProperties{
+		-1.0f,
+		1.0f,
+		1.0f,
+		-1.0f
+	});
+}
+
+GLQuad::GLQuad(GLQuadProperties properties)
+{
+	ApplicationSettings settings = GetApplicationSettings();
+	float windowWidth = float(settings.windowWidth);
+	float windowHeight = float(settings.windowHeight);
+
+	// GL coordinate system has the origin in the middle of the screen and
+	// ranges between -1.0 to 1.0. UI coordinates must be remapped.
+	float relativeWidth  = properties.width     / windowWidth;
+	float relativeHeight = properties.height    / windowHeight;
+	float relativeX      = properties.positionX / windowWidth;
+	float relativeY      = properties.positionY / windowHeight;
+
+	MeshBufferProperties bufferProperties{
+		-1.0f + 2.0f*relativeX,						// left edge
+		-1.0f + 2.0f*(relativeX + relativeWidth),	// right edge
+		 1.0f - 2.0f*relativeY,			     		// top edge
+		 1.0f - 2.0f*(relativeY + relativeHeight),  // bottom edge
+	};
+	CreateMeshBuffer(bufferProperties);
 }
 
 GLQuad::~GLQuad()
@@ -19,15 +57,12 @@ void GLQuad::Draw()
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
-void GLQuad::CreateMeshBuffer()
+void GLQuad::CreateMeshBuffer(MeshBufferProperties properties)
 {
-	// GL coordinate system is not like most UIs where the origin is upper left corner.
-	// Y is up, X is right 
-	float scale = 1.0f;
-	float right = 1.0f * scale;
-	float left = -1.0f * scale;
-	float top = 1.0f * scale;
-	float bottom = -1.0f * scale;
+	float left = properties.left;
+	float right = properties.right;
+	float top = properties.top;
+	float bottom = properties.bottom;
 
 	const GLuint valuesPerPosition = 3;
 	std::vector<float> positions = {

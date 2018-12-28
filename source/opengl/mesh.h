@@ -2,6 +2,16 @@
 #include <vector>
 #include "glad/glad.h"
 
+struct GLQuadProperties
+{
+	int positionX;
+	int positionY;
+	int width;
+	int height;
+
+	void MatchWindowDimensions();
+};
+
 class GLQuad
 {
 protected:
@@ -10,11 +20,20 @@ protected:
 
 public:
 	GLQuad();
+	GLQuad(GLQuadProperties properties);
 	~GLQuad();
 	void Draw();
 
 protected:
-	void CreateMeshBuffer();
+	struct MeshBufferProperties
+	{
+		float left;
+		float right;
+		float top;
+		float bottom;
+	};
+
+	void CreateMeshBuffer(MeshBufferProperties properties);
 
 	template <class T>
 	void BufferVector(GLenum glBufferType, const std::vector<T>& vector, GLenum usage)

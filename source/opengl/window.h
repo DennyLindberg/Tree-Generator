@@ -11,19 +11,9 @@ protected:
 	SDL_GLContext maincontext;
 	SDL_Window* window = nullptr;
 
-	int screenWidth = 640;
-	int screenHeight = 480;
-	int fullscreen = 0;
-	bool vsyncEnabled = false;
-
 public:
-	OpenGLWindow(int width, int height, bool fullscreenEnabled, bool vsync)
-		: screenWidth { width}, screenHeight{ height }, 
-		  fullscreen(fullscreenEnabled), 
-		  vsyncEnabled{ vsync }
-	{
-		Initialize();
-	}
+	OpenGLWindow();
+	OpenGLWindow(int width, int height, bool fullscreenEnabled, bool vsync);
 
 	~OpenGLWindow() = default;
 
@@ -33,5 +23,5 @@ public:
 	void Clear();
 
 protected:
-	void Initialize();
+	void Initialize(int width, int height, bool fullscreenEnabled, bool vsync);
 };

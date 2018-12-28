@@ -51,7 +51,7 @@ void GLTexture::UseForDrawing()
 	glBindTexture(GL_TEXTURE_2D, textureId);
 }
 
-void GLTexture::SendToGPU()
+void GLTexture::CopyToGPU()
 {
 	glBindTexture(GL_TEXTURE_2D, textureId);
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, PIXEL_FORMAT, PIXEL_TYPE, (GLvoid*)glData.data());

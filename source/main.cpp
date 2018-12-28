@@ -14,18 +14,21 @@
 #include "opengl/texture.h"
 #include "opengl/program.h"
 #include "opengl/screenshot.h"
+#include "core/application.h"
 #include "core/clock.h"
 #include "core/randomization.h"
 #include "core/threads.h"
 #include "core/utilities.h"
 
+#include "canvas.h"
+
 /*
 	Program configurations
 */
-static const bool SCREEN_VSYNC = false;
-static const unsigned int SCREEN_FULLSCREEN = 0;
-static const unsigned int SCREEN_WIDTH = 640;
-static const unsigned int SCREEN_HEIGHT = 480;
+static const bool WINDOW_VSYNC = false;
+static const int WINDOW_FULLSCREEN = 0;
+static const int WINDOW_WIDTH = 640;
+static const int WINDOW_HEIGHT = 480;
 static const float CAMERA_FOV = 90.0f;
 
 /*
@@ -33,10 +36,14 @@ static const float CAMERA_FOV = 90.0f;
 */
 int main()
 {
+	InitializeApplication(ApplicationSettings{
+		WINDOW_VSYNC, WINDOW_FULLSCREEN, WINDOW_WIDTH, WINDOW_HEIGHT
+	});
+
 	UniformRandomGenerator uniformGenerator;
 	ApplicationClock clock;
 
-	OpenGLWindow window(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_FULLSCREEN, SCREEN_VSYNC);
+	OpenGLWindow window;
 	window.SetTitle("Plant Generation");
 	window.SetClearColor(0.0, 0.0, 0.0, 1.0f);
 
@@ -44,13 +51,9 @@ int main()
 	glGenVertexArrays(1, &defaultVao);
 	glBindVertexArray(defaultVao);
 
-	GLTexture texture{int(SCREEN_WIDTH), int(SCREEN_HEIGHT)};
-	texture.FillDebug();
-	texture.SendToGPU();
-	texture.UseForDrawing();
-	GLQuad fullscreenQuad{};
-
-	GLTexturedProgram shaderProgram{};
+	Canvas2D canvas{ {50, 50, 200, 100} };
+	std::shared_ptr<GLTexture> texture = canvas.GetTexture();
+	texture->FillDebug();
 
 	double lastScreenUpdate = clock.time;
 	bool quit = false;
@@ -74,7 +77,7 @@ int main()
 					quit = true;
 					break;
 				case SDLK_s:
-					TakeScreenshot("screenshot.png", SCREEN_WIDTH, SCREEN_HEIGHT);
+					TakeScreenshot("screenshot.png", WINDOW_WIDTH, WINDOW_HEIGHT);
 					break;
 				}
 			}
@@ -82,8 +85,9 @@ int main()
 
 		window.SetClearColor((sinf(float(clock.time))+1.0f)/2.0f, 0.0, 0.0, 1.0f);
 		window.Clear();
-		shaderProgram.Use();
-		fullscreenQuad.Draw();
+
+		canvas.Draw();
+
 		window.SwapFramebuffer();
 	}
 

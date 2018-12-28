@@ -46,7 +46,7 @@ public:
 	unsigned int PixelArrayIndex(unsigned int x, unsigned int y);
 
 	void UseForDrawing();
-	void SendToGPU();
+	void CopyToGPU();
 
 	void FillDebug();
 	void SaveAsPNG(std::string filename, bool incrementNewFile = false);

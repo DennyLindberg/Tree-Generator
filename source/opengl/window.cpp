@@ -1,6 +1,18 @@
 #include "window.h"
+#include "../core/application.h"
 #include "glad/glad.h"
 #include <string>
+
+OpenGLWindow::OpenGLWindow()
+{
+	ApplicationSettings settings = GetApplicationSettings();
+	Initialize(settings.windowWidth, settings.windowHeight, settings.fullscreen, settings.vsync);
+}
+
+OpenGLWindow::OpenGLWindow(int width, int height, bool fullscreenEnabled, bool vsync)
+{
+	Initialize(width, height, fullscreenEnabled, vsync);
+}
 
 void OpenGLWindow::SetTitle(std::string newCaption)
 {
@@ -22,7 +34,7 @@ void OpenGLWindow::Clear()
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 }
 
-void OpenGLWindow::Initialize()
+void OpenGLWindow::Initialize(int width, int height, bool fullscreen, bool vsync)
 {
 	auto sdl_die = [](const char* message) {
 		fprintf(stderr, "%s: %s\n", message, SDL_GetError());
@@ -60,7 +72,7 @@ void OpenGLWindow::Initialize()
 		window = SDL_CreateWindow(
 			"",
 			SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-			screenWidth, screenHeight, SDL_WINDOW_OPENGL
+			width, height, SDL_WINDOW_OPENGL
 		);
 	}
 	if (window == NULL) sdl_die("Couldn't set video mode");
@@ -79,7 +91,7 @@ void OpenGLWindow::Initialize()
 	printf("Version:  %s\n", glGetString(GL_VERSION));
 
 	// Use v-sync
-	SDL_GL_SetSwapInterval(vsyncEnabled ? 1 : 0);
+	SDL_GL_SetSwapInterval(vsync ? 1 : 0);
 
 	// Disable depth test and face culling.
 	glEnable(GL_DEPTH_TEST);

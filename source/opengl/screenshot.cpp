@@ -6,7 +6,7 @@
 #include "glad/glad.h"
 #include "../thirdparty/lodepng.h"
 
-void TakeScreenshot(std::string filename, unsigned int screenWidth, unsigned int screenHeight)
+void TakeScreenshot(std::string filename, unsigned int windowWidth, unsigned int windowHeight)
 {
 	/*
 		Determine file output
@@ -36,19 +36,19 @@ void TakeScreenshot(std::string filename, unsigned int screenWidth, unsigned int
 		Get data from framebuffer
 	*/
 	int channelCount = 4;
-	std::vector<GLubyte> data(channelCount * screenWidth * screenHeight);
-	glReadPixels(0, 0, screenWidth, screenHeight, GL_RGBA, GL_UNSIGNED_BYTE, data.data());
+	std::vector<GLubyte> data(channelCount * windowWidth * windowHeight);
+	glReadPixels(0, 0, windowWidth, windowHeight, GL_RGBA, GL_UNSIGNED_BYTE, data.data());
 
 	// Flip image because OpenGL works from bottom up
 	int pixelSourceId = 0;
 	int pixelTargetId = 0;
-	std::vector<GLubyte> flippedData(4 * screenWidth * screenHeight);
-	for (unsigned int x = 0; x < screenWidth; ++x)
+	std::vector<GLubyte> flippedData(4 * windowWidth * windowHeight);
+	for (unsigned int x = 0; x < windowWidth; ++x)
 	{
-		for (unsigned int y = 0; y < screenHeight; ++y)
+		for (unsigned int y = 0; y < windowHeight; ++y)
 		{
-			pixelSourceId = x*channelCount + y*screenWidth*channelCount;
-			pixelTargetId = x*channelCount + (screenHeight-y-1)*screenWidth*channelCount;
+			pixelSourceId = x*channelCount + y*windowWidth*channelCount;
+			pixelTargetId = x*channelCount + (windowHeight-y-1)*windowWidth*channelCount;
 
 			flippedData[pixelTargetId] = data[pixelSourceId];
 			flippedData[pixelTargetId+1] = data[pixelSourceId+1];
@@ -60,7 +60,7 @@ void TakeScreenshot(std::string filename, unsigned int screenWidth, unsigned int
 	/*
 		Write PNG
 	*/
-	unsigned error = lodepng::encode(filename, flippedData, screenWidth, screenHeight);
+	unsigned error = lodepng::encode(filename, flippedData, windowWidth, windowHeight);
 	if (error)
 	{
 		std::cout << "encoder error " << error << ": " << lodepng_error_text(error) << std::endl;
