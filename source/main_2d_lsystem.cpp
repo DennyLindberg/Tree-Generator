@@ -33,14 +33,14 @@ static const int WINDOW_FULLSCREEN = 0;
 static const int WINDOW_WIDTH = 640;
 static const int WINDOW_HEIGHT = 480;
 static const float CAMERA_FOV = 90.0f;
-static const float WINDOW_RATIO = WINDOW_WIDTH / float(WINDOW_HEIGHT);
+
 /*
 	Application
 */
 int main()
 {
 	InitializeApplication(ApplicationSettings{
-		WINDOW_VSYNC, WINDOW_FULLSCREEN, WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_RATIO
+		WINDOW_VSYNC, WINDOW_FULLSCREEN, WINDOW_WIDTH, WINDOW_HEIGHT
 	});
 
 	UniformRandomGenerator uniformGenerator;
@@ -54,18 +54,13 @@ int main()
 	glGenVertexArrays(1, &defaultVao);
 	glBindVertexArray(defaultVao);
 
-	glm::vec3 cameraPosition{ 0.0f, 0.0f, 5.0f };
-	glm::vec3 cameraTarget{ 0.0f, 0.0f, 0.0f };
-	glm::vec3 upVector{0.0f, 1.0f, 0.0f};
-
-	glm::mat4 identity = glm::mat4(1.0f); // right to left order
-	glm::mat4 model = identity;
-	glm::mat4 view = glm::lookAt(cameraPosition, cameraTarget, upVector);
-	glm::mat4 projection = glm::perspective(glm::radians(90.0f), WINDOW_RATIO, 0.1f, 100.0f);
-	glm::mat4 MVP = projection * view * model;
-
-	GLCube cube;
-	GLTexturedProgram cubeShader;
+	Canvas2D canvas;
+	canvas.Fill(Color{255, 255, 255, 255});
+	DrawFractalTree(canvas, 6, 3.0f, glm::fvec2(WINDOW_WIDTH * 0.45, WINDOW_HEIGHT), 90);
+	DrawKochCurve(canvas, 4, 3.0f, glm::fvec2(0, WINDOW_HEIGHT), 0);
+	DrawSierpinskiTriangle(canvas, 5, 8.0f, glm::fvec2(WINDOW_WIDTH, 0), -90);
+	DrawDragonCurve(canvas, 11, 4.0f, glm::fvec2(WINDOW_WIDTH * 0.9, WINDOW_HEIGHT*0.8), -90);
+	DrawFractalPlant(canvas, 6, 2.0f, glm::fvec2(0, WINDOW_HEIGHT*0.4), 0);
 
 	double lastScreenUpdate = clock.time;
 	bool quit = false;
@@ -126,10 +121,7 @@ int main()
 		window.SetClearColor((sinf(float(clock.time))+1.0f)/2.0f, 0.0, 0.0, 1.0f);
 		window.Clear();
 
-		cubeShader.UpdateMVP(MVP);
-		cubeShader.Use();
-		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-		cube.Draw();
+		canvas.RenderToScreen();
 
 		window.SwapFramebuffer();
 	}

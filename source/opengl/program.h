@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include "glad/glad.h"
+#include "../core/math.h"
 
 class GLProgram
 {
@@ -21,7 +22,12 @@ public:
 
 class GLTexturedProgram : public GLProgram
 {
+protected:
+	GLint mvpId = 0;
+
 public:
 	GLTexturedProgram();
 	~GLTexturedProgram() = default;
+
+	void UpdateMVP(glm::mat4& mvp);
 };

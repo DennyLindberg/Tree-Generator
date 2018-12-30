@@ -56,11 +56,19 @@ workspace "Plant Generator"
     filter{}
 
 
-project "Main Application"
+project "L-system 3D"
     kind "ConsoleApp"
     targetdir(binaries_folder)
-    targetname("plants")
+    targetname("plants3d")
     files ({source_folder .. "**.h", source_folder .. "**.c", source_folder .. "**.cpp"})
     removefiles{ source_folder .. "main*.cpp"}
     files ({source_folder .. "main.cpp"})
+    
+project "L-system 2D"
+    kind "ConsoleApp"
+    targetdir(binaries_folder)
+    targetname("plants2d")
+    files ({source_folder .. "**.h", source_folder .. "**.c", source_folder .. "**.cpp"})
+    removefiles{ source_folder .. "main*.cpp"}
+    files ({source_folder .. "main_2d_lsystem.cpp"})
     
