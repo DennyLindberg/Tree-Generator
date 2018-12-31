@@ -25,6 +25,7 @@
 #include "turtle.h"
 #include "lsystem.h"
 #include "examples.h"
+#include "input.h"
 
 /*
 	Program configurations
@@ -50,22 +51,23 @@ int main()
 
 	OpenGLWindow window;
 	window.SetTitle("Plant Generation");
-	window.SetClearColor(0.0, 0.0, 0.0, 1.0f);
+	window.SetClearColor(0.5f, 0.5f, 0.5f, 1.0f);
 
 	GLuint defaultVao = 0;
 	glGenVertexArrays(1, &defaultVao);
 	glBindVertexArray(defaultVao);
 
 	Camera camera;
-	camera.position = {0.0f, 0.0f, 5.0f};
+	TurntableController turntable(camera);
+	turntable.sensitivity = 0.25f;
+	turntable.Set(0.0f, 45.0f, 5.0f);
 
 	GLCube cube;
 	GLTexturedProgram cubeShader;
 
 	double lastScreenUpdate = clock.time;
 	bool quit = false;
-	int startX = 0;
-	int startY = 0;
+	bool captureMouse = false;
 	while (!quit)
 	{
 		clock.Tick();
@@ -86,43 +88,74 @@ int main()
 				switch (event.key.keysym.sym)
 				{
 				case SDLK_ESCAPE:
+				{
 					quit = true;
 					break;
+				}
 				case SDLK_s:
+				{
 					TakeScreenshot("screenshot.png", WINDOW_WIDTH, WINDOW_HEIGHT);
 					break;
 				}
+				case SDLK_f:
+				{
+					turntable.SnapToOrigin();
+					break;
+				}
+				}
+				break;
 			}
 			case SDL_MOUSEBUTTONDOWN:
+			{
+				captureMouse = true;
+				SDL_ShowCursor(0);
+				SDL_SetRelativeMouseMode(SDL_TRUE);
+				switch (event.button.button)
+				{
+				case SDL_BUTTON_RIGHT:
+				{
+					turntable.inputState = TurntableInputState::Zoom;
+					break;
+				}
+				case SDL_BUTTON_MIDDLE:
+				{
+					turntable.inputState = TurntableInputState::Translate;
+					break;
+				}
+				case SDL_BUTTON_LEFT:
+				default:
+				{
+					turntable.inputState = TurntableInputState::Rotate;
+					break;
+				}
+				}
+				break;
+			}
+			case SDL_MOUSEBUTTONUP:
+			{
+				captureMouse = false;
+				SDL_ShowCursor(1);
+				SDL_SetRelativeMouseMode(SDL_FALSE);
+				break;
+			}
 			case SDL_MOUSEMOTION:
 			{
-				//SDL_MouseButtonEvent& b = event.button;
-				//if (b.button == SDL_BUTTON_LEFT) 
-				//{
-				//	int mouseWindowX = 0;
-				//	int mouseWindowY = 0;
-				//	SDL_GetMouseState(&mouseWindowX, &mouseWindowY);
-
-				//	int canvasMouseX = mouseWindowX - 50;
-				//	int canvasMouseY = mouseWindowY - 50;
-				//	canvas.DrawLine(glm::ivec2{ startX, startY }, glm::ivec2{ canvasMouseX, canvasMouseY }, Color{ 0,0,0,255 });
-				//	
-				//	startX = canvasMouseX;
-				//	startY = canvasMouseY;
-				//}
+				if (captureMouse)
+				{
+					turntable.ApplyMouseInput(-event.motion.xrel, event.motion.yrel);
+				}
+				break;
 			}
 			default:
 			{
-
+				break;
 			}
 			}
 		}
 
-		window.SetClearColor((sinf(float(clock.time))+1.0f)/2.0f, 0.0, 0.0, 1.0f);
 		window.Clear();
 
 		glm::mat4 model = glm::mat4(1.0f);
-		camera.position = glm::vec3(glm::rotate(glm::mat4(1.0f), glm::radians(45.0f) * float(clock.deltaTime), glm::vec3(0.0f, 1.0f, 0.0f)) * glm::vec4(camera.position, 1.0f));
 		cubeShader.UpdateMVP(camera.ViewProjectionMatrix() * model);
 		cubeShader.Use();
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
