@@ -32,10 +32,10 @@ void Canvas2D::RenderToScreen()
 
 void Canvas2D::Initialize(GLQuadProperties properties)
 {
-	minX = properties.positionX;
-	minY = properties.positionY;
-	maxX = minX + properties.width;
-	maxY = minY + properties.height;
+	minX = int(properties.positionX);
+	minY = int(properties.positionY);
+	maxX = minX + int(properties.width);
+	maxY = minY + int(properties.height);
 
 	if (!canvasShader)
 	{
@@ -43,7 +43,7 @@ void Canvas2D::Initialize(GLQuadProperties properties)
 	}
 
 	quad = std::make_shared<GLQuad>(properties);
-	texture = std::make_shared<GLTexture>(properties.width, properties.height);
+	texture = std::make_shared<GLTexture>(int(properties.width), int(properties.height));
 }
 
 /*

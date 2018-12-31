@@ -15,6 +15,7 @@
 #include "opengl/texture.h"
 #include "opengl/program.h"
 #include "opengl/screenshot.h"
+#include "opengl/grid.h"
 #include "core/application.h"
 #include "core/clock.h"
 #include "core/randomization.h"
@@ -64,6 +65,10 @@ int main()
 
 	GLCube cube;
 	GLTexturedProgram cubeShader;
+
+	GLGrid grid;
+	grid.size = 20.0f;
+	grid.gridSpacing = 0.5f;
 
 	double lastScreenUpdate = clock.time;
 	bool quit = false;
@@ -155,12 +160,15 @@ int main()
 
 		window.Clear();
 
-		glm::mat4 model = glm::mat4(1.0f);
-		cubeShader.UpdateMVP(camera.ViewProjectionMatrix() * model);
+		glm::mat4 mvp = camera.ViewProjectionMatrix();
+
+		cubeShader.UpdateMVP(mvp);
 		cubeShader.Use();
-		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		cube.Draw();
 
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		grid.Draw(mvp);
 		window.SwapFramebuffer();
 	}
 

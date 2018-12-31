@@ -18,6 +18,7 @@ public:
 	void LoadVertexShader(std::string shaderText);
 	void CompileAndLink();
 	void Use();
+	GLuint Id();
 };
 
 class GLTexturedProgram : public GLProgram

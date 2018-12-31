@@ -81,6 +81,11 @@ void GLProgram::Use()
 	glUseProgram(programId);
 }
 
+GLuint GLProgram::Id()
+{
+	return programId;
+}
+
 GLTexturedProgram::GLTexturedProgram()
 {
 	LoadFragmentShader(R"glsl(
