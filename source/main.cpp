@@ -10,6 +10,7 @@
 
 // Application includes
 #include "opengl/window.h"
+#include "opengl/camera.h"
 #include "opengl/mesh.h"
 #include "opengl/texture.h"
 #include "opengl/program.h"
@@ -34,6 +35,7 @@ static const int WINDOW_WIDTH = 640;
 static const int WINDOW_HEIGHT = 480;
 static const float CAMERA_FOV = 90.0f;
 static const float WINDOW_RATIO = WINDOW_WIDTH / float(WINDOW_HEIGHT);
+
 /*
 	Application
 */
@@ -54,15 +56,8 @@ int main()
 	glGenVertexArrays(1, &defaultVao);
 	glBindVertexArray(defaultVao);
 
-	glm::vec3 cameraPosition{ 0.0f, 0.0f, 5.0f };
-	glm::vec3 cameraTarget{ 0.0f, 0.0f, 0.0f };
-	glm::vec3 upVector{0.0f, 1.0f, 0.0f};
-
-	glm::mat4 identity = glm::mat4(1.0f); // right to left order
-	glm::mat4 model = identity;
-	glm::mat4 view = glm::lookAt(cameraPosition, cameraTarget, upVector);
-	glm::mat4 projection = glm::perspective(glm::radians(90.0f), WINDOW_RATIO, 0.1f, 100.0f);
-	glm::mat4 MVP = projection * view * model;
+	Camera camera;
+	camera.position = {0.0f, 0.0f, 5.0f};
 
 	GLCube cube;
 	GLTexturedProgram cubeShader;
@@ -126,7 +121,9 @@ int main()
 		window.SetClearColor((sinf(float(clock.time))+1.0f)/2.0f, 0.0, 0.0, 1.0f);
 		window.Clear();
 
-		cubeShader.UpdateMVP(MVP);
+		glm::mat4 model = glm::mat4(1.0f);
+		camera.position = glm::vec3(glm::rotate(glm::mat4(1.0f), glm::radians(45.0f) * float(clock.deltaTime), glm::vec3(0.0f, 1.0f, 0.0f)) * glm::vec4(camera.position, 1.0f));
+		cubeShader.UpdateMVP(camera.ViewProjectionMatrix() * model);
 		cubeShader.Use();
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		cube.Draw();
