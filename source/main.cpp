@@ -73,6 +73,7 @@ int main()
 	double lastScreenUpdate = clock.time;
 	bool quit = false;
 	bool captureMouse = false;
+	bool renderWireframe = false;
 	while (!quit)
 	{
 		clock.Tick();
@@ -81,90 +82,47 @@ int main()
 		SDL_Event event;
 		while (SDL_PollEvent(&event))
 		{
-			switch (event.type)
+			quit = (event.type == SDL_QUIT) || (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE);
+			
+			if (event.type == SDL_KEYDOWN)
 			{
-			case SDL_QUIT:
-			{
-				quit = true;
-				break;
+				auto key = event.key.keysym.sym;
+
+				if		(key == SDLK_4) renderWireframe = true;
+				else if (key == SDLK_5) renderWireframe = false;
+				else if (key == SDLK_s) TakeScreenshot("screenshot.png", WINDOW_WIDTH, WINDOW_HEIGHT);
+				else if (key == SDLK_f) turntable.SnapToOrigin();
 			}
-			case SDL_KEYDOWN:
-			{
-				switch (event.key.keysym.sym)
-				{
-				case SDLK_ESCAPE:
-				{
-					quit = true;
-					break;
-				}
-				case SDLK_s:
-				{
-					TakeScreenshot("screenshot.png", WINDOW_WIDTH, WINDOW_HEIGHT);
-					break;
-				}
-				case SDLK_f:
-				{
-					turntable.SnapToOrigin();
-					break;
-				}
-				}
-				break;
-			}
-			case SDL_MOUSEBUTTONDOWN:
+			else if (event.type == SDL_MOUSEBUTTONDOWN)
 			{
 				captureMouse = true;
 				SDL_ShowCursor(0);
 				SDL_SetRelativeMouseMode(SDL_TRUE);
-				switch (event.button.button)
-				{
-				case SDL_BUTTON_RIGHT:
-				{
-					turntable.inputState = TurntableInputState::Zoom;
-					break;
-				}
-				case SDL_BUTTON_MIDDLE:
-				{
-					turntable.inputState = TurntableInputState::Translate;
-					break;
-				}
-				case SDL_BUTTON_LEFT:
-				default:
-				{
-					turntable.inputState = TurntableInputState::Rotate;
-					break;
-				}
-				}
-				break;
+
+				auto button = event.button.button;
+				     if (button == SDL_BUTTON_LEFT)   turntable.inputState = TurntableInputState::Rotate;
+				else if (button == SDL_BUTTON_MIDDLE) turntable.inputState = TurntableInputState::Translate;
+				else if (button == SDL_BUTTON_RIGHT)  turntable.inputState = TurntableInputState::Zoom;
 			}
-			case SDL_MOUSEBUTTONUP:
+			else if (event.type == SDL_MOUSEBUTTONUP)
 			{
 				captureMouse = false;
 				SDL_ShowCursor(1);
 				SDL_SetRelativeMouseMode(SDL_FALSE);
-				break;
 			}
-			case SDL_MOUSEMOTION:
+			else if (event.type == SDL_MOUSEMOTION && captureMouse)
 			{
-				if (captureMouse)
-				{
-					turntable.ApplyMouseInput(-event.motion.xrel, event.motion.yrel);
-				}
-				break;
-			}
-			default:
-			{
-				break;
-			}
+				turntable.ApplyMouseInput(-event.motion.xrel, event.motion.yrel);
 			}
 		}
 
 		window.Clear();
+		glPolygonMode(GL_FRONT_AND_BACK, (renderWireframe? GL_LINE : GL_FILL));
 
 		glm::mat4 mvp = camera.ViewProjectionMatrix();
 
 		cubeShader.UpdateMVP(mvp);
 		cubeShader.Use();
-		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		cube.Draw();
 
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
