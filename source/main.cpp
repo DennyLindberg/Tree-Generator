@@ -8,6 +8,7 @@
 #include <vector>
 #include <fstream>
 #include <filesystem>
+#include <thread>
 
 // Application includes
 #include "opengl/window.h"
@@ -39,30 +40,74 @@ static const int WINDOW_HEIGHT = 480;
 static const float CAMERA_FOV = 90.0f;
 static const float WINDOW_RATIO = WINDOW_WIDTH / float(WINDOW_HEIGHT);
 
+namespace fs = std::filesystem;
+fs::path contentFolder = fs::current_path().parent_path() / "content";
+
+/*
+	File modify listener
+*/
+bool closeThread = false;
+void ListenToFolderChange()
+{
+	auto notifyFilter = FILE_NOTIFY_CHANGE_LAST_WRITE;
+	HANDLE hDir = CreateFile(
+		contentFolder.c_str(),
+		FILE_LIST_DIRECTORY,
+		FILE_SHARE_WRITE | FILE_SHARE_READ | FILE_SHARE_DELETE,
+		NULL,
+		OPEN_EXISTING,
+		FILE_FLAG_BACKUP_SEMANTICS,
+		NULL
+	);
+
+	if (hDir == INVALID_HANDLE_VALUE)
+	{
+		printf("\r\nInvalid handle");
+		return;
+	}
+
+	BYTE buffer[4096];
+	DWORD dwBytesReturned = 0;
+	while (!closeThread)
+	{
+		bool retrievedChanges = ReadDirectoryChangesW(
+			hDir,
+			buffer, sizeof(buffer),
+			FALSE,
+			notifyFilter,
+			&dwBytesReturned, NULL, NULL
+		);
+
+		if (!retrievedChanges)
+		{
+			printf("\r\nFile listener failed...");
+			break;
+		}
+
+		BYTE* p = buffer;
+		for (;;)
+		{
+			FILE_NOTIFY_INFORMATION* info = reinterpret_cast<FILE_NOTIFY_INFORMATION*>(p);
+
+			if (info->Action == FILE_ACTION_MODIFIED)
+			{
+				int stringLength = info->FileNameLength / sizeof(WCHAR);
+				std::wstring filename = std::wstring((WCHAR*)&info->FileName, stringLength);
+				wprintf(L"\r\nChanged: %Ls", filename.c_str());
+			}
+
+			if (!info->NextEntryOffset) break;
+			p += info->NextEntryOffset;
+		}
+	}
+}
+
 /*
 	Application
 */
 int main()
 {
-	// Testing
-	// https://docs.microsoft.com/en-us/windows/desktop/FileIO/obtaining-directory-change-notifications
-	// https://docs.microsoft.com/en-us/windows/desktop/api/shlobj_core/nf-shlobj_core-shchangenotifyregister
-	// http://codewee.com/view.php?idx=20
-	namespace fs = std::filesystem;
-	auto contentFolder = fs::current_path().parent_path() / "content";
-	std::cout << contentFolder << std::endl;
-
-	HANDLE folderChangeNotification = FindFirstChangeNotification(
-		contentFolder.c_str(),         // directory to watch 
-		FALSE,                         // do not watch subtree 
-		FILE_NOTIFY_CHANGE_FILE_NAME); // watch file name changes 
-
-	if (folderChangeNotification == INVALID_HANDLE_VALUE || folderChangeNotification == NULL)
-	{
-		printf("\n ERROR: FindFirstChangeNotification function failed.\n");
-		return 0;
-	}
-
+	std::thread fileChangeThread = std::thread(ListenToFolderChange);
 
 	//
 	InitializeApplication(ApplicationSettings{
@@ -150,6 +195,12 @@ int main()
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		grid.Draw(mvp);
 		window.SwapFramebuffer();
+	}
+
+	closeThread = true;
+	if (fileChangeThread.joinable())
+	{
+		fileChangeThread.join();
 	}
 
 	return 0;
