@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include <fstream>
+#include <filesystem>
 
 // Application includes
 #include "opengl/window.h"
@@ -43,6 +44,27 @@ static const float WINDOW_RATIO = WINDOW_WIDTH / float(WINDOW_HEIGHT);
 */
 int main()
 {
+	// Testing
+	// https://docs.microsoft.com/en-us/windows/desktop/FileIO/obtaining-directory-change-notifications
+	// https://docs.microsoft.com/en-us/windows/desktop/api/shlobj_core/nf-shlobj_core-shchangenotifyregister
+	// http://codewee.com/view.php?idx=20
+	namespace fs = std::filesystem;
+	auto contentFolder = fs::current_path().parent_path() / "content";
+	std::cout << contentFolder << std::endl;
+
+	HANDLE folderChangeNotification = FindFirstChangeNotification(
+		contentFolder.c_str(),         // directory to watch 
+		FALSE,                         // do not watch subtree 
+		FILE_NOTIFY_CHANGE_FILE_NAME); // watch file name changes 
+
+	if (folderChangeNotification == INVALID_HANDLE_VALUE || folderChangeNotification == NULL)
+	{
+		printf("\n ERROR: FindFirstChangeNotification function failed.\n");
+		return 0;
+	}
+
+
+	//
 	InitializeApplication(ApplicationSettings{
 		WINDOW_VSYNC, WINDOW_FULLSCREEN, WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_RATIO
 	});
