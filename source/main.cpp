@@ -9,6 +9,8 @@
 #include <fstream>
 #include <filesystem>
 #include <thread>
+#include <atomic>
+#include <functional>
 
 // Application includes
 #include "opengl/window.h"
@@ -41,17 +43,27 @@ static const float CAMERA_FOV = 90.0f;
 static const float WINDOW_RATIO = WINDOW_WIDTH / float(WINDOW_HEIGHT);
 
 namespace fs = std::filesystem;
-fs::path contentFolder = fs::current_path().parent_path() / "content";
 
 /*
 	File modify listener
 */
-bool closeThread = false;
-void ListenToFolderChange()
+struct OnFileChangeCallback
 {
-	auto notifyFilter = FILE_NOTIFY_CHANGE_LAST_WRITE;
+	std::atomic_bool isDirty = false;
+	std::wstring fileName;
+	double lastModifiedTimestamp = 0.0;
+	double lastCallbackTimestamp = 0.0;
+	std::function<void(fs::path)> callback;
+};
+
+bool closeThread = false;
+void ListenToFileChange(fs::path folder, std::vector<OnFileChangeCallback*>& fileCallbacks)
+{
+	/*
+		Setup the listener
+	*/
 	HANDLE hDir = CreateFile(
-		contentFolder.c_str(),
+		folder.c_str(),
 		FILE_LIST_DIRECTORY,
 		FILE_SHARE_WRITE | FILE_SHARE_READ | FILE_SHARE_DELETE,
 		NULL,
@@ -66,6 +78,12 @@ void ListenToFolderChange()
 		return;
 	}
 
+	/*
+		Start listener loop
+	*/
+	ApplicationClock clock;
+	clock.Tick();
+
 	BYTE buffer[4096];
 	DWORD dwBytesReturned = 0;
 	while (!closeThread)
@@ -74,7 +92,7 @@ void ListenToFolderChange()
 			hDir,
 			buffer, sizeof(buffer),
 			FALSE,
-			notifyFilter,
+			FILE_NOTIFY_CHANGE_LAST_WRITE,
 			&dwBytesReturned, NULL, NULL
 		);
 
@@ -84,17 +102,29 @@ void ListenToFolderChange()
 			break;
 		}
 
+		/*
+			Process changes
+		*/
+		clock.Tick();
 		BYTE* p = buffer;
+		std::vector<std::wstring> detectedFilenames;
 		for (;;)
 		{
 			FILE_NOTIFY_INFORMATION* info = reinterpret_cast<FILE_NOTIFY_INFORMATION*>(p);
 
-			if (info->Action == FILE_ACTION_MODIFIED)
+			int stringLength = info->FileNameLength / sizeof(WCHAR);
+			std::wstring filename = std::wstring((WCHAR*)&info->FileName, stringLength);
+
+			for (auto* onChangePtr : fileCallbacks)
 			{
-				int stringLength = info->FileNameLength / sizeof(WCHAR);
-				std::wstring filename = std::wstring((WCHAR*)&info->FileName, stringLength);
-				wprintf(L"\r\nChanged: %Ls", filename.c_str());
+				if (filename == onChangePtr->fileName)
+				{
+					onChangePtr->isDirty = true;
+					onChangePtr->lastModifiedTimestamp = clock.time;
+					break;
+				}
 			}
+
 
 			if (!info->NextEntryOffset) break;
 			p += info->NextEntryOffset;
@@ -102,14 +132,27 @@ void ListenToFolderChange()
 	}
 }
 
+bool LoadText(fs::path filePath, std::string& output)
+{
+	output = "";
+	if (!fs::exists(filePath)) return false;
+
+	std::ifstream InputFileStream(filePath.c_str());
+	if (InputFileStream && InputFileStream.is_open())
+	{
+		output.assign((std::istreambuf_iterator<char>(InputFileStream)), std::istreambuf_iterator< char >());
+		return true;
+	}
+
+	return false;
+}
+
 /*
 	Application
 */
 int main()
 {
-	std::thread fileChangeThread = std::thread(ListenToFolderChange);
-
-	//
+	fs::path contentFolder = fs::current_path().parent_path() / "content";
 	InitializeApplication(ApplicationSettings{
 		WINDOW_VSYNC, WINDOW_FULLSCREEN, WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_RATIO
 	});
@@ -132,10 +175,59 @@ int main()
 
 	GLCube cube;
 	GLTexturedProgram cubeShader;
+	GLProgram liveShader;
+	std::string fragment, vertex;
+	if (LoadText(contentFolder/"test_fragment.glsl", fragment) && LoadText(contentFolder/"test_vertex.glsl", vertex))
+	{
+		liveShader.LoadFragmentShader(fragment);
+		liveShader.LoadVertexShader(vertex);
+		liveShader.CompileAndLink();
+	}
+
 
 	GLGrid grid;
 	grid.size = 20.0f;
 	grid.gridSpacing = 0.5f;
+
+
+	/*
+		Listen to file changes. A new thread listens to changes in the file system and reports it
+		via the atomic bool. The main thread handles the callback.
+	*/
+	OnFileChangeCallback fragmentCallback;
+	fragmentCallback.fileName = L"basic_fragment.glsl";
+	fragmentCallback.callback = [&liveShader](fs::path filePath) -> void {
+		wprintf(L"\r\nFragment shader changed: %Ls\r\n", filePath.c_str());
+		std::string content;
+		if (LoadText(filePath, content))
+		{
+			printf("\r\n=======\r\n%s\r\n=======\r\n\r\n", content.c_str());
+			liveShader.LoadFragmentShader(content);
+			liveShader.CompileAndLink();
+		}
+		else
+		{
+			printf("\r\nFailed to read file");
+		}
+	};
+	OnFileChangeCallback vertexCallback;
+	vertexCallback.fileName = L"basic_vertex.glsl";
+	vertexCallback.callback = [&liveShader](fs::path filePath) -> void {
+		wprintf(L"\r\nVertex shader changed: %Ls\r\n", filePath.c_str());
+		std::string content;
+		if (LoadText(filePath, content))
+		{
+			printf("\r\n=======\r\n%s\r\n=======\r\n\r\n", content.c_str());
+			liveShader.LoadVertexShader(content);
+			liveShader.CompileAndLink();
+		}
+		else
+		{
+			printf("\r\nFailed to read file");
+		}
+	};
+	std::vector<OnFileChangeCallback*> fileChangeCallbacks = {&fragmentCallback, &vertexCallback};
+	std::thread fileChangeThread = std::thread(ListenToFileChange, contentFolder, fileChangeCallbacks);
 
 	double lastScreenUpdate = clock.time;
 	bool quit = false;
@@ -145,6 +237,33 @@ int main()
 	{
 		clock.Tick();
 		window.SetTitle("Time: " + TimeString(clock.time) + ", FPS: " + FpsString(clock.deltaTime));
+
+		/*
+			Process file changes
+		*/
+		for (auto* fileChange : fileChangeCallbacks)
+		{
+			if (fileChange->isDirty && fileChange->callback)
+			{
+				// FULHACK: Add delay to read, sometimes the notification is too fast and the
+				// file is actually not ready to be read.
+				double timeSinceModification = clock.time - fileChange->lastModifiedTimestamp;
+				if (timeSinceModification < 0.1)
+				{
+					continue;
+				}
+
+				fileChange->isDirty = false;
+
+				// Avoid double notification spam
+				double timeSinceLastCallback = clock.time - fileChange->lastCallbackTimestamp;
+				if (timeSinceLastCallback > 0.1)
+				{
+					fileChange->callback(contentFolder / fileChange->fileName);
+					fileChange->lastCallbackTimestamp = clock.time;
+				}
+			}
+		}
 
 		SDL_Event event;
 		while (SDL_PollEvent(&event))
@@ -188,8 +307,8 @@ int main()
 
 		glm::mat4 mvp = camera.ViewProjectionMatrix();
 
-		cubeShader.UpdateMVP(mvp);
-		cubeShader.Use();
+		liveShader.UpdateMVP(mvp);
+		liveShader.Use();
 		cube.Draw();
 
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);

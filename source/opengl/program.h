@@ -10,6 +10,8 @@ protected:
 	GLint vertex_shader_id = 0;
 	GLint fragment_shader_id = 0;
 
+	GLint mvpId = 0;
+
 public:
 	GLProgram();
 	~GLProgram();
@@ -19,16 +21,12 @@ public:
 	void CompileAndLink();
 	void Use();
 	GLuint Id();
+	void UpdateMVP(glm::mat4& mvp);
 };
 
 class GLTexturedProgram : public GLProgram
 {
-protected:
-	GLint mvpId = 0;
-
 public:
 	GLTexturedProgram();
 	~GLTexturedProgram() = default;
-
-	void UpdateMVP(glm::mat4& mvp);
 };

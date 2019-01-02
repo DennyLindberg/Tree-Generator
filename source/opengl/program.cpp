@@ -73,6 +73,7 @@ void GLProgram::CompileAndLink()
 		glAttachShader(programId, vertex_shader_id);
 		glAttachShader(programId, fragment_shader_id);
 		glLinkProgram(programId);
+		mvpId = glGetUniformLocation(programId, "mvp");
 	}
 }
 
@@ -84,6 +85,12 @@ void GLProgram::Use()
 GLuint GLProgram::Id()
 {
 	return programId;
+}
+
+void GLProgram::UpdateMVP(glm::mat4& mvp)
+{
+	Use();
+	glUniformMatrix4fv(mvpId, 1, GL_FALSE, &mvp[0][0]);
 }
 
 GLTexturedProgram::GLTexturedProgram()
@@ -125,8 +132,3 @@ GLTexturedProgram::GLTexturedProgram()
 	mvpId = glGetUniformLocation(programId, "mvp");
 }
 
-void GLTexturedProgram::UpdateMVP(glm::mat4& mvp)
-{
-	Use();
-	glUniformMatrix4fv(mvpId, 1, GL_FALSE, &mvp[0][0]);
-}
