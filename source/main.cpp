@@ -132,21 +132,6 @@ void ListenToFileChange(fs::path folder, std::vector<OnFileChangeCallback*>& fil
 	}
 }
 
-bool LoadText(fs::path filePath, std::string& output)
-{
-	output = "";
-	if (!fs::exists(filePath)) return false;
-
-	std::ifstream InputFileStream(filePath.c_str());
-	if (InputFileStream && InputFileStream.is_open())
-	{
-		output.assign((std::istreambuf_iterator<char>(InputFileStream)), std::istreambuf_iterator< char >());
-		return true;
-	}
-
-	return false;
-}
-
 /*
 	Application
 */
@@ -154,7 +139,7 @@ int main()
 {
 	fs::path contentFolder = fs::current_path().parent_path() / "content";
 	InitializeApplication(ApplicationSettings{
-		WINDOW_VSYNC, WINDOW_FULLSCREEN, WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_RATIO
+		WINDOW_VSYNC, WINDOW_FULLSCREEN, WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_RATIO, contentFolder
 	});
 
 	UniformRandomGenerator uniformGenerator;
@@ -174,10 +159,9 @@ int main()
 	turntable.Set(0.0f, 45.0f, 5.0f);
 
 	GLCube cube;
-	GLTexturedProgram cubeShader;
 	GLProgram liveShader;
 	std::string fragment, vertex;
-	if (LoadText(contentFolder/"test_fragment.glsl", fragment) && LoadText(contentFolder/"test_vertex.glsl", vertex))
+	if (LoadText(contentFolder/"basic_fragment.glsl", fragment) && LoadText(contentFolder/"basic_vertex.glsl", vertex))
 	{
 		liveShader.LoadFragmentShader(fragment);
 		liveShader.LoadVertexShader(vertex);

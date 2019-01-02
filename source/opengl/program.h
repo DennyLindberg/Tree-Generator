@@ -23,10 +23,3 @@ public:
 	GLuint Id();
 	void UpdateMVP(glm::mat4& mvp);
 };
-
-class GLTexturedProgram : public GLProgram
-{
-public:
-	GLTexturedProgram();
-	~GLTexturedProgram() = default;
-};

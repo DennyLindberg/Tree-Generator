@@ -1,4 +1,5 @@
 #pragma once
+#include <filesystem>
 
 struct ApplicationSettings
 {
@@ -7,6 +8,7 @@ struct ApplicationSettings
 	int windowWidth = 0;
 	int windowHeight = 0;
 	float windowRatio = 0;
+	std::filesystem::path contentPath;
 };
 
 void InitializeApplication(ApplicationSettings newInfo);

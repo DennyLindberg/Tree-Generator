@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include <fstream>
+#include <filesystem>
 
 // Application includes
 #include "opengl/window.h"
@@ -33,14 +34,17 @@ static const int WINDOW_FULLSCREEN = 0;
 static const int WINDOW_WIDTH = 640;
 static const int WINDOW_HEIGHT = 480;
 static const float CAMERA_FOV = 90.0f;
+static const float WINDOW_RATIO = WINDOW_WIDTH / float(WINDOW_HEIGHT);
+namespace fs = std::filesystem;
 
 /*
 	Application
 */
 int main()
 {
+	fs::path contentFolder = fs::current_path().parent_path() / "content";
 	InitializeApplication(ApplicationSettings{
-		WINDOW_VSYNC, WINDOW_FULLSCREEN, WINDOW_WIDTH, WINDOW_HEIGHT
+		WINDOW_VSYNC, WINDOW_FULLSCREEN, WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_RATIO, contentFolder
 	});
 
 	UniformRandomGenerator uniformGenerator;

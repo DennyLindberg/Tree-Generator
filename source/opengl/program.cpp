@@ -73,7 +73,14 @@ void GLProgram::CompileAndLink()
 		glAttachShader(programId, vertex_shader_id);
 		glAttachShader(programId, fragment_shader_id);
 		glLinkProgram(programId);
+
+		// These attributes are bound by default
+		glBindAttribLocation(programId, 0, "vertexPosition");
+		glBindAttribLocation(programId, 1, "vertexTCoord");
 		mvpId = glGetUniformLocation(programId, "mvp");
+
+		glm::mat4 identity{ 1.0f };
+		UpdateMVP(identity);
 	}
 }
 
@@ -92,43 +99,3 @@ void GLProgram::UpdateMVP(glm::mat4& mvp)
 	Use();
 	glUniformMatrix4fv(mvpId, 1, GL_FALSE, &mvp[0][0]);
 }
-
-GLTexturedProgram::GLTexturedProgram()
-{
-	LoadFragmentShader(R"glsl(
-		#version 330
-
-		in vec4 TCoord;
-
-		uniform sampler2D textureSampler;
-		layout(location = 0) out vec4 color;
-
-		void main() 
-		{
-			color = texture(textureSampler, TCoord.rg);
-		}
-	)glsl");
-
-	LoadVertexShader(R"glsl(
-		#version 330
-
-		layout(location = 0) in vec3 vertexPosition;
-		layout(location = 1) in vec4 vertexTCoord;
-		uniform mat4 mvp;
-
-		out vec4 TCoord;
-
-		void main()
-		{
-			gl_Position = mvp * vec4(vertexPosition, 1.0f);
-			TCoord = vertexTCoord;
-		}
-	)glsl");
-
-	CompileAndLink();
-
-	glBindAttribLocation(programId, 0, "vertexPosition");
-	glBindAttribLocation(programId, 1, "vertexTCoord");
-	mvpId = glGetUniformLocation(programId, "mvp");
-}
-

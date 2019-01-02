@@ -1,4 +1,5 @@
 #include "utilities.h"
+#include <fstream>
 
 std::string TimeString(double time)
 {
@@ -20,4 +21,19 @@ std::string FpsString(double deltaTime)
 	{
 		return std::to_string(int(round(1.0 / deltaTime)));
 	}
+}
+
+bool LoadText(std::filesystem::path filePath, std::string& output)
+{
+	output = "";
+	if (!std::filesystem::exists(filePath)) return false;
+
+	std::ifstream InputFileStream(filePath.c_str());
+	if (InputFileStream && InputFileStream.is_open())
+	{
+		output.assign((std::istreambuf_iterator<char>(InputFileStream)), std::istreambuf_iterator< char >());
+		return true;
+	}
+
+	return false;
 }
