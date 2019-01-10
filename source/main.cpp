@@ -8,8 +8,6 @@
 #include <vector>
 #include <fstream>
 #include <filesystem>
-#include <thread>
-#include <atomic>
 #include <functional>
 
 // Application includes
@@ -25,9 +23,11 @@
 #include "core/randomization.h"
 #include "core/threads.h"
 #include "core/utilities.h"
+#include "core/filelistener.h"
+
 
 #include "canvas.h"
-#include "turtle.h"
+#include "turtle3d.h"
 #include "lsystem.h"
 #include "examples.h"
 #include "input.h"
@@ -43,94 +43,6 @@ static const float CAMERA_FOV = 90.0f;
 static const float WINDOW_RATIO = WINDOW_WIDTH / float(WINDOW_HEIGHT);
 
 namespace fs = std::filesystem;
-
-/*
-	File modify listener
-*/
-struct OnFileChangeCallback
-{
-	std::atomic_bool isDirty = false;
-	std::wstring fileName;
-	double lastModifiedTimestamp = 0.0;
-	double lastCallbackTimestamp = 0.0;
-	std::function<void(fs::path)> callback;
-};
-
-bool closeThread = false;
-void ListenToFileChange(fs::path folder, std::vector<OnFileChangeCallback*>& fileCallbacks)
-{
-	/*
-		Setup the listener
-	*/
-	HANDLE hDir = CreateFile(
-		folder.c_str(),
-		FILE_LIST_DIRECTORY,
-		FILE_SHARE_WRITE | FILE_SHARE_READ | FILE_SHARE_DELETE,
-		NULL,
-		OPEN_EXISTING,
-		FILE_FLAG_BACKUP_SEMANTICS,
-		NULL
-	);
-
-	if (hDir == INVALID_HANDLE_VALUE)
-	{
-		printf("\r\nInvalid handle");
-		return;
-	}
-
-	/*
-		Start listener loop
-	*/
-	ApplicationClock clock;
-	clock.Tick();
-
-	BYTE buffer[4096];
-	DWORD dwBytesReturned = 0;
-	while (!closeThread)
-	{
-		bool retrievedChanges = ReadDirectoryChangesW(
-			hDir,
-			buffer, sizeof(buffer),
-			FALSE,
-			FILE_NOTIFY_CHANGE_LAST_WRITE,
-			&dwBytesReturned, NULL, NULL
-		);
-
-		if (!retrievedChanges)
-		{
-			printf("\r\nFile listener failed...");
-			break;
-		}
-
-		/*
-			Process changes
-		*/
-		clock.Tick();
-		BYTE* p = buffer;
-		std::vector<std::wstring> detectedFilenames;
-		for (;;)
-		{
-			FILE_NOTIFY_INFORMATION* info = reinterpret_cast<FILE_NOTIFY_INFORMATION*>(p);
-
-			int stringLength = info->FileNameLength / sizeof(WCHAR);
-			std::wstring filename = std::wstring((WCHAR*)&info->FileName, stringLength);
-
-			for (auto* onChangePtr : fileCallbacks)
-			{
-				if (filename == onChangePtr->fileName)
-				{
-					onChangePtr->isDirty = true;
-					onChangePtr->lastModifiedTimestamp = clock.time;
-					break;
-				}
-			}
-
-
-			if (!info->NextEntryOffset) break;
-			p += info->NextEntryOffset;
-		}
-	}
-}
 
 /*
 	Application
@@ -158,6 +70,9 @@ int main()
 	turntable.sensitivity = 0.25f;
 	turntable.Set(0.0f, 45.0f, 5.0f);
 
+	GLTexture defaultTexture{contentFolder / "default.png"};
+	defaultTexture.UseForDrawing();
+
 	GLCube cube;
 	GLProgram liveShader;
 	std::string fragment, vertex;
@@ -168,51 +83,50 @@ int main()
 		liveShader.CompileAndLink();
 	}
 
-
 	GLGrid grid;
 	grid.size = 20.0f;
 	grid.gridSpacing = 0.5f;
 
+	FileListener fileListener{ contentFolder };
+	fileListener.Bind(
+		L"basic_fragment.glsl", 
+		[&liveShader](fs::path filePath) -> void {
+			wprintf(L"\r\nFragment shader changed: %Ls\r\n", filePath.c_str());
+			std::string content;
+			if (LoadText(filePath, content))
+			{
+				printf("\r\n=======\r\n%s\r\n=======\r\n\r\n", content.c_str());
+				liveShader.LoadFragmentShader(content);
+				liveShader.CompileAndLink();
+			}
+			else
+			{
+				printf("\r\nFailed to read file");
+			}
+		}
+	);
+	fileListener.Bind(
+		L"basic_vertex.glsl",
+		[&liveShader](fs::path filePath) -> void {
+			wprintf(L"\r\nVertex shader changed: %Ls\r\n", filePath.c_str());
+			std::string content;
+			if (LoadText(filePath, content))
+			{
+				printf("\r\n=======\r\n%s\r\n=======\r\n\r\n", content.c_str());
+				liveShader.LoadVertexShader(content);
+				liveShader.CompileAndLink();
+			}
+			else
+			{
+				printf("\r\nFailed to read file");
+			}
+		}
+	);
+	fileListener.StartThread();
 
 	/*
-		Listen to file changes. A new thread listens to changes in the file system and reports it
-		via the atomic bool. The main thread handles the callback.
+		Main application loop
 	*/
-	OnFileChangeCallback fragmentCallback;
-	fragmentCallback.fileName = L"basic_fragment.glsl";
-	fragmentCallback.callback = [&liveShader](fs::path filePath) -> void {
-		wprintf(L"\r\nFragment shader changed: %Ls\r\n", filePath.c_str());
-		std::string content;
-		if (LoadText(filePath, content))
-		{
-			printf("\r\n=======\r\n%s\r\n=======\r\n\r\n", content.c_str());
-			liveShader.LoadFragmentShader(content);
-			liveShader.CompileAndLink();
-		}
-		else
-		{
-			printf("\r\nFailed to read file");
-		}
-	};
-	OnFileChangeCallback vertexCallback;
-	vertexCallback.fileName = L"basic_vertex.glsl";
-	vertexCallback.callback = [&liveShader](fs::path filePath) -> void {
-		wprintf(L"\r\nVertex shader changed: %Ls\r\n", filePath.c_str());
-		std::string content;
-		if (LoadText(filePath, content))
-		{
-			printf("\r\n=======\r\n%s\r\n=======\r\n\r\n", content.c_str());
-			liveShader.LoadVertexShader(content);
-			liveShader.CompileAndLink();
-		}
-		else
-		{
-			printf("\r\nFailed to read file");
-		}
-	};
-	std::vector<OnFileChangeCallback*> fileChangeCallbacks = {&fragmentCallback, &vertexCallback};
-	std::thread fileChangeThread = std::thread(ListenToFileChange, contentFolder, fileChangeCallbacks);
-
 	double lastScreenUpdate = clock.time;
 	bool quit = false;
 	bool captureMouse = false;
@@ -220,34 +134,10 @@ int main()
 	while (!quit)
 	{
 		clock.Tick();
+		SetThreadedTime(clock.time);
 		window.SetTitle("Time: " + TimeString(clock.time) + ", FPS: " + FpsString(clock.deltaTime));
+		fileListener.ProcessCallbacksOnMainThread();
 
-		/*
-			Process file changes
-		*/
-		for (auto* fileChange : fileChangeCallbacks)
-		{
-			if (fileChange->isDirty && fileChange->callback)
-			{
-				// FULHACK: Add delay to read, sometimes the notification is too fast and the
-				// file is actually not ready to be read.
-				double timeSinceModification = clock.time - fileChange->lastModifiedTimestamp;
-				if (timeSinceModification < 0.1)
-				{
-					continue;
-				}
-
-				fileChange->isDirty = false;
-
-				// Avoid double notification spam
-				double timeSinceLastCallback = clock.time - fileChange->lastCallbackTimestamp;
-				if (timeSinceLastCallback > 0.1)
-				{
-					fileChange->callback(contentFolder / fileChange->fileName);
-					fileChange->lastCallbackTimestamp = clock.time;
-				}
-			}
-		}
 
 		SDL_Event event;
 		while (SDL_PollEvent(&event))
@@ -298,12 +188,6 @@ int main()
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		grid.Draw(mvp);
 		window.SwapFramebuffer();
-	}
-
-	closeThread = true;
-	if (fileChangeThread.joinable())
-	{
-		fileChangeThread.join();
 	}
 
 	return 0;

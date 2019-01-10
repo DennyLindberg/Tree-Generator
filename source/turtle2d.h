@@ -5,7 +5,7 @@
 #include <stack>
 #include <functional>
 
-struct TurtleState
+struct TurtleState2D
 {
 	glm::fvec2 position;
 	float angle;
@@ -17,7 +17,7 @@ public:
 	glm::fvec2 position;
 	float angle;
 
-	std::stack<TurtleState> turtleStack;
+	std::stack<TurtleState2D> turtleStack;
 	std::map<char, std::function<void(Turtle2D&, Canvas2D&)>> actions;
 
 	Turtle2D() = default;

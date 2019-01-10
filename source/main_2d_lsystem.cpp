@@ -22,7 +22,7 @@
 #include "core/utilities.h"
 
 #include "canvas.h"
-#include "turtle.h"
+#include "turtle2d.h"
 #include "lsystem.h"
 #include "examples.h"
 

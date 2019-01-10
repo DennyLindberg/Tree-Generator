@@ -135,16 +135,16 @@ void GLTexture::FillDebug()
 	}
 }
 
-void GLTexture::SaveAsPNG(std::string filename, bool incrementNewFile)
+void GLTexture::SaveAsPNG(std::filesystem::path filepath, bool incrementNewFile)
 {
-	unsigned error = lodepng::encode(filename, glData, (unsigned int)width, (unsigned int)height);
+	unsigned error = lodepng::encode(filepath.string(), glData, (unsigned int)width, (unsigned int)height);
 	if (error)
 	{
 		std::cout << "encoder error " << error << ": " << lodepng_error_text(error) << std::endl;
 	}
 }
 
-void GLTexture::LoadPNG(std::string filename)
+void GLTexture::LoadPNG(std::filesystem::path filepath)
 {
 	unsigned sourceWidth, sourceHeight;
 
@@ -153,7 +153,7 @@ void GLTexture::LoadPNG(std::string filename)
 
 	std::vector<unsigned char> png;
 	lodepng::State state;
-	unsigned error = lodepng::load_file(png, filename);
+	unsigned error = lodepng::load_file(png, filepath.string());
 	if (!error)
 	{
 		error = lodepng::decode(glData, sourceWidth, sourceHeight, state, png);

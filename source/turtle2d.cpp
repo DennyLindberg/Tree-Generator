@@ -1,8 +1,8 @@
-#include "turtle.h"
+#include "turtle2d.h"
 
 void Turtle2D::Clear()
 {
-	turtleStack = std::stack<TurtleState>();
+	turtleStack = std::stack<TurtleState2D>();
 }
 
 void Turtle2D::Draw(Canvas2D& canvas, std::string& symbols, glm::fvec2 startPosition, float startAngle)
@@ -25,12 +25,12 @@ void Turtle2D::Draw(Canvas2D& canvas, std::string& symbols, glm::fvec2 startPosi
 
 void Turtle2D::PushState()
 {
-	turtleStack.push(TurtleState{ position, angle });
+	turtleStack.push(TurtleState2D{ position, angle });
 }
 
 void Turtle2D::PopState()
 {
-	TurtleState oldState = turtleStack.top();
+	TurtleState2D oldState = turtleStack.top();
 	position = oldState.position;
 	angle = oldState.angle;
 	turtleStack.pop();

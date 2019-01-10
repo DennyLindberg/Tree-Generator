@@ -13,3 +13,5 @@ struct ApplicationSettings
 
 void InitializeApplication(ApplicationSettings newInfo);
 ApplicationSettings GetApplicationSettings();
+void SetThreadedTime(double newTime);
+double GetThreadedTime();

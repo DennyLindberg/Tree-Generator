@@ -2,6 +2,7 @@
 #include <vector>
 #include "glad/glad.h"
 #include "../core/math.h"
+#include <filesystem>
 
 class GLTexture
 {
@@ -15,6 +16,11 @@ public:
 	int height = 0;
 
 public:
+	GLTexture(std::filesystem::path imagePath)
+	{
+		LoadPNG(imagePath);
+	}
+
 	GLTexture(int textureWidth, int textureHeight)
 		: width{ textureWidth }, height{ textureHeight }
 	{
@@ -59,6 +65,6 @@ public:
 	void Fill(FColor& color);
 
 	void FillDebug();
-	void SaveAsPNG(std::string filename, bool incrementNewFile = false);
-	void LoadPNG(std::string filename);
+	void SaveAsPNG(std::filesystem::path filepath, bool incrementNewFile = false);
+	void LoadPNG(std::filesystem::path filepath);
 };
