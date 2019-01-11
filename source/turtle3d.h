@@ -24,7 +24,7 @@ public:
 	TurtleState previousState;
 	TurtleState state;
 	std::stack<TurtleState> turtleStack;
-	std::map<char, std::function<void(Turtle3D<ContextType>&)>> actions;
+	std::map<char, std::function<void(Turtle3D<ContextType>&, int)>> actions;
 
 	std::vector<std::pair<TurtleState, TurtleState>> bones;
 
@@ -50,11 +50,19 @@ public:
 		previousState = state;
 		PushNewBone(); // root
 
-		for (char& c : symbols)
+		size_t size = symbols.size();
+		for (int i=0; i<size; i++)
 		{
-			if (actions.count(c))
+			int repetitionCounter = 1;
+			while ((i < int(size - 1)) && symbols[i] == symbols[i + 1])
 			{
-				actions[c](*this);
+				repetitionCounter++;
+				i++;
+			}
+
+			if (actions.count(symbols[i]))
+			{
+				actions[symbols[i]](*this, repetitionCounter);
 			}
 		}
 	}

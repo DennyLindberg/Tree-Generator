@@ -149,16 +149,22 @@ int main()
 	fractalTree.productionRules['0'] = "1[0]0";
 	fractalTree.productionRules['1'] = "11";
 
-	turtle.actions['0'] = [scale, &uniformGenerator](Turtle& t) {
-		t.MoveForward(scale*uniformGenerator.RandomFloat());
+	turtle.actions['0'] = [scale, &uniformGenerator](Turtle& t, int repetitions) {
+		float forwardGrowth = 0.0f;
+		while (--repetitions >= 0)
+		{
+			forwardGrowth += uniformGenerator.RandomFloat();
+		}
+
+		t.MoveForward(scale*forwardGrowth);
 	};
 	turtle.actions['1'] = turtle.actions['0'];
-	turtle.actions['['] = [scale, &uniformGenerator](Turtle& t) {
+	turtle.actions['['] = [scale, &uniformGenerator](Turtle& t, int repetitions) {
 		t.PushState();
 		t.Rotate(180.0f*uniformGenerator.RandomFloat(0.1f, 1.0f), 
 				 45.0f*uniformGenerator.RandomFloat(0.2f, 1.0f));
 	};
-	turtle.actions[']'] = [scale, &uniformGenerator](Turtle& t) {
+	turtle.actions[']'] = [scale, &uniformGenerator](Turtle& t, int repetitions) {
 		t.PopState();
 		t.Rotate(-180.0f*uniformGenerator.RandomFloat(0.1f, 1.0f),
 				  45.0f*uniformGenerator.RandomFloat(0.2f, 1.0f));
@@ -168,8 +174,10 @@ int main()
 	turtle.GenerateSkeleton(growth);
 
 	GLLine skeleton;
-	turtle.ForEachBone([&skeleton](std::pair<TurtleState, TurtleState>& bone) -> void {
-		skeleton.lineSegments.push_back(GLLineSegment{ bone.first.position, bone.second.position });
+	float counter = 0;
+	turtle.ForEachBone([&counter, &skeleton](std::pair<TurtleState, TurtleState>& bone) -> void {
+		skeleton.AddLine(bone.first.position, bone.second.position, glm::fvec4(0.0f, 1.0f, 0.0f, 1.0f));
+		skeleton.AddLine(bone.first.position, bone.first.position+bone.second.sideDirection*0.1f, glm::fvec4(1.0f, 0.0f, 0.0f, 1.0f));
 	});
 	skeleton.SendToGPU();
 
