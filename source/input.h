@@ -18,9 +18,8 @@ protected:
 	float pitch = 0.0f;
 	float distance = 1.0f;
 
-	glm::vec3 position = glm::vec3{ 0.0f };
-
 public:
+	glm::vec3 position = glm::vec3{ 0.0f };
 	float sensitivity = 1.0f;
 	bool clampPitch = false;
 

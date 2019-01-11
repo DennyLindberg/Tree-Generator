@@ -67,8 +67,9 @@ int main()
 
 	Camera camera;
 	TurntableController turntable(camera);
+	turntable.position = glm::vec3{0.0f, 3.0f, 0.0f};
 	turntable.sensitivity = 0.25f;
-	turntable.Set(0.0f, 45.0f, 5.0f);
+	turntable.Set(45.0f, 25.0f, 7.0f);
 
 	GLTexture defaultTexture{contentFolder / "default.png"};
 	defaultTexture.UseForDrawing();
@@ -142,7 +143,7 @@ int main()
 	using Turtle = Turtle3D<TreeContext>;
 	using TurtleState = TurtleState3D<TreeContext>;
 
-	float scale = 0.1f;
+	float scale = 0.05f;
 	Turtle turtle;
 	LSystemString fractalTree;
 	fractalTree.axiom = "0";
@@ -177,7 +178,7 @@ int main()
 	float counter = 0;
 	turtle.ForEachBone([&counter, &skeleton](std::pair<TurtleState, TurtleState>& bone) -> void {
 		skeleton.AddLine(bone.first.position, bone.second.position, glm::fvec4(0.0f, 1.0f, 0.0f, 1.0f));
-		skeleton.AddLine(bone.first.position, bone.first.position+bone.second.sideDirection*0.1f, glm::fvec4(1.0f, 0.0f, 0.0f, 1.0f));
+		skeleton.AddLine(bone.first.position, bone.first.position+bone.second.sideDirection*0.5f, glm::fvec4(1.0f, 0.0f, 0.0f, 1.0f));
 	});
 	skeleton.SendToGPU();
 
