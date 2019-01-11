@@ -15,7 +15,7 @@ public:
 	OpenGLWindow();
 	OpenGLWindow(int width, int height, bool fullscreenEnabled, bool vsync);
 
-	~OpenGLWindow() = default;
+	~OpenGLWindow();
 
 	void SetTitle(std::string newCaption);
 	void SwapFramebuffer();

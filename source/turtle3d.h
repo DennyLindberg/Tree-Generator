@@ -5,28 +5,129 @@
 #include <stack>
 #include <functional>
 
-template<class ContextType>
-struct TurtleState3D
+struct TurtleTransform
 {
-	glm::fvec3 position         = glm::fvec3{ 0.0f };
+	glm::fvec3 position = glm::fvec3{ 0.0f };
 	glm::fvec3 forwardDirection = glm::fvec3{ 0.0f, 1.0f, 0.0f }; // normalized, orthogonal, "up" basis vector. Local Y+ defined in world space coordinates.
-	glm::fvec3 sideDirection    = glm::fvec3{ 0.0f, 0.0f, 1.0f }; // normalized, orthogonal, "side" basis vector. Local Z+ defined in world space coordinates.
-	ContextType context         = ContextType{};                  // templated type to define context-specific data
+	glm::fvec3 sideDirection = glm::fvec3{ 0.0f, 0.0f, 1.0f }; // normalized, orthogonal, "side" basis vector. Local Z+ defined in world space coordinates.
+
+	void Clear()
+	{
+		position = glm::fvec3{ 0.0f };
+		forwardDirection = glm::fvec3{ 0.0f, 1.0f, 0.0f };
+		sideDirection = glm::fvec3{ 0.0f, 0.0f, 1.0f };
+	}
 };
 
-template<class ContextType>
+struct Bone
+{
+	Bone* parent = nullptr;
+	Bone* firstChild = nullptr;
+	Bone* nextSibling = nullptr;
+
+	TurtleTransform transform;
+	float length = 0.0f;
+
+	Bone() = default;
+	~Bone()
+	{
+		Clear();
+	}
+
+	glm::fvec3 tipPosition()
+	{
+		return transform.position + transform.forwardDirection*length;
+	}
+
+	void Clear()
+	{
+		parent = nullptr;
+		transform.Clear();
+		length = 0.0f;
+
+		if (firstChild)
+		{
+			delete firstChild;
+			firstChild = nullptr;
+		}
+
+		if (nextSibling)
+		{
+			delete nextSibling;
+			nextSibling = nullptr;
+		}
+	}
+
+	Bone* NewChild()
+	{
+		Bone* newChild = nullptr;
+		if (!firstChild)
+		{
+			firstChild = new Bone();
+			newChild = firstChild;
+		}
+		else
+		{
+			Bone* sibling = firstChild;
+			while (sibling->nextSibling)
+			{
+				sibling = sibling->nextSibling;
+			}
+
+			sibling->nextSibling = new Bone();
+			newChild = sibling->nextSibling;
+		}
+
+		newChild->transform.position = this->tipPosition();
+
+		return newChild;
+	}
+
+	void DebugPrint(int depth = 0)
+	{
+		for (int i = 0; i < depth; ++i)
+		{
+			printf("  ");
+		}
+
+		printf("x\n");
+
+		if (firstChild)
+		{
+			firstChild->DebugPrint(depth+1);
+		}
+
+		if (nextSibling)
+		{
+			nextSibling->DebugPrint(depth);
+		}
+	}
+
+	void ForEach(std::function<void(Bone*)>& callback)
+	{
+		callback(this);
+
+		if (firstChild)
+		{
+			firstChild->ForEach(callback);
+		}
+
+		if (nextSibling)
+		{
+			nextSibling->ForEach(callback);
+		}
+	}
+};
+
 class Turtle3D
 {
 public:
-	using TurtleState = TurtleState3D<ContextType>;
-	using SkeletonJoint = TurtleState;
+	std::map<char, std::function<void(Turtle3D&, int)>> actions;
 
-	TurtleState previousState;
-	TurtleState state;
-	std::stack<TurtleState> turtleStack;
-	std::map<char, std::function<void(Turtle3D<ContextType>&, int)>> actions;
-
-	std::vector<std::pair<TurtleState, TurtleState>> bones;
+	TurtleTransform transform;
+	std::stack<Bone*> boneStack;
+	Bone* activeBone = nullptr;
+	Bone* rootBone = nullptr;
 
 	Turtle3D()
 	{
@@ -37,18 +138,20 @@ public:
 
 	void Clear()
 	{
-		turtleStack = std::stack<TurtleState>();
-		bones.clear();
-		bones.shrink_to_fit();
-		state = TurtleState{};
+		transform.Clear();
+		if (rootBone)
+		{
+			delete rootBone;
+			rootBone = nullptr;
+			activeBone = nullptr;
+		}
+		boneStack = std::stack<Bone*>();
 	}
 
-	void GenerateSkeleton(std::string& symbols, TurtleState startState = TurtleState{})
+	void GenerateSkeleton(std::string& symbols, TurtleTransform startTransform = TurtleTransform{})
 	{
 		Clear();
-		state = startState;
-		previousState = state;
-		PushNewBone(); // root
+		transform = std::move(startTransform);
 
 		size_t size = symbols.size();
 		for (int i=0; i<size; i++)
@@ -69,56 +172,59 @@ public:
 
 	void PushState()
 	{
-		previousState = state;
-		turtleStack.push(state);
+		boneStack.push(activeBone);
 	}
 
 	void PopState()
 	{
-		state = turtleStack.top();
-		previousState = turtleStack.empty()? state : turtleStack.top();
+		activeBone = boneStack.top();
+		boneStack.pop();
 
-		turtleStack.pop();
+		transform = activeBone->transform;
+		transform.position = activeBone->tipPosition();
 	}
 
-	// Angles are related to the forward and side basis vectors
+	// Angles are related to the forward and side basis vectors.
 	// Yaw is applied first.
 	void Rotate(float yawDegrees, float pitchDegrees)
 	{
 		glm::mat4 identity{ 1 };
 
 		// Twist the forward direction
-		auto yawRot = glm::rotate(identity, glm::radians(yawDegrees), state.forwardDirection);
-		state.sideDirection = yawRot * glm::fvec4(state.sideDirection, 0.0f);
+		auto yawRot = glm::rotate(identity, glm::radians(yawDegrees), transform.forwardDirection);
+		transform.sideDirection = yawRot * glm::fvec4(transform.sideDirection, 0.0f);
 
 		// Change the up/down angle of the forward direction
-		glm::fvec3 pitchVector = glm::cross(state.forwardDirection, state.sideDirection);
+		glm::fvec3 pitchVector = glm::cross(transform.forwardDirection, transform.sideDirection);
 		auto pitchRot = glm::rotate(identity, glm::radians(pitchDegrees), pitchVector);
-		state.forwardDirection = pitchRot * glm::fvec4(state.forwardDirection, 0.0f);
-		state.sideDirection = pitchRot * glm::fvec4(state.sideDirection, 0.0f);
+		transform.forwardDirection = pitchRot * glm::fvec4(transform.forwardDirection, 0.0f);
+		transform.sideDirection = pitchRot * glm::fvec4(transform.sideDirection, 0.0f);
 	}
 
 	void MoveForward(float distance)
 	{
-		state.position += state.forwardDirection*distance;
+		glm::fvec3 oldPosition = transform.position;
+		transform.position += transform.forwardDirection*distance;
 
-		PushNewBone();
-
-		previousState = state;
-	}
-
-	void PushNewBone()
-	{
-		bones.push_back(std::make_pair(previousState, state));
-	}
-
-	void ForEachBone(std::function<void(std::pair<TurtleState, TurtleState>&)> callback)
-	{
-		if (!callback) return;
-
-		for (auto& b : bones)
+		if (!rootBone)
 		{
-			callback(b);
+			rootBone = new Bone{};
+			activeBone = rootBone;
+		}
+		else
+		{
+			activeBone = activeBone->NewChild();
+		}
+		activeBone->transform = transform;
+		activeBone->transform.position = oldPosition;
+		activeBone->length = distance;
+	}
+
+	void ForEachBone(std::function<void(Bone*)> callback)
+	{
+		if (rootBone && callback)
+		{
+			rootBone->ForEach(callback);
 		}
 	}
 };

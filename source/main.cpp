@@ -136,49 +136,68 @@ int main()
 	/*
 		Build mesh using Turtle
 	*/
-	struct TreeContext
-	{
-		int x;
-	};
-	using Turtle = Turtle3D<TreeContext>;
-	using TurtleState = TurtleState3D<TreeContext>;
-
 	float scale = 0.05f;
-	Turtle turtle;
-	LSystemString fractalTree;
+	Turtle3D turtle;
+	LSystemStringFunctional fractalTree;
 	fractalTree.axiom = "0";
-	fractalTree.productionRules['0'] = "1[0]0";
-	fractalTree.productionRules['1'] = "11";
+	fractalTree.productionRules['0'] = [&uniformGenerator]() -> std::string 
+	{
+		std::string result = "1[0]";
 
-	turtle.actions['0'] = [scale, &uniformGenerator](Turtle& t, int repetitions) {
+		int branchCount = 2;
+		while (branchCount < 4 && uniformGenerator.RandomFloat() < 0.5f)
+		{
+			result += "[0]";
+			branchCount++;
+		}
+
+		return result + "0";
+	};
+	fractalTree.productionRules['1'] = [&uniformGenerator]() -> std::string 
+	{
+		return "11";
+	};
+
+	turtle.actions['0'] = [scale, &uniformGenerator](Turtle3D& t, int repetitions)
+	{
 		float forwardGrowth = 0.0f;
 		while (--repetitions >= 0)
 		{
 			forwardGrowth += uniformGenerator.RandomFloat();
 		}
+		forwardGrowth *= scale;
 
-		t.MoveForward(scale*forwardGrowth);
+		t.MoveForward(forwardGrowth);
 	};
 	turtle.actions['1'] = turtle.actions['0'];
-	turtle.actions['['] = [scale, &uniformGenerator](Turtle& t, int repetitions) {
+	turtle.actions['['] = [scale, &uniformGenerator](Turtle3D& t, int repetitions)
+	{
 		t.PushState();
 		t.Rotate(180.0f*uniformGenerator.RandomFloat(0.1f, 1.0f), 
 				 45.0f*uniformGenerator.RandomFloat(0.2f, 1.0f));
 	};
-	turtle.actions[']'] = [scale, &uniformGenerator](Turtle& t, int repetitions) {
+	turtle.actions[']'] = [scale, &uniformGenerator](Turtle3D& t, int repetitions)
+	{
 		t.PopState();
 		t.Rotate(-180.0f*uniformGenerator.RandomFloat(0.1f, 1.0f),
 				  45.0f*uniformGenerator.RandomFloat(0.2f, 1.0f));
 	};
 
-	std::string growth = fractalTree.RunProduction(8);
-	turtle.GenerateSkeleton(growth);
+	turtle.GenerateSkeleton(fractalTree.RunProduction(8));
 
 	GLLine skeleton;
-	float counter = 0;
-	turtle.ForEachBone([&counter, &skeleton](std::pair<TurtleState, TurtleState>& bone) -> void {
-		skeleton.AddLine(bone.first.position, bone.second.position, glm::fvec4(0.0f, 1.0f, 0.0f, 1.0f));
-		skeleton.AddLine(bone.first.position, bone.first.position+bone.second.sideDirection*0.5f, glm::fvec4(1.0f, 0.0f, 0.0f, 1.0f));
+	turtle.ForEachBone([&skeleton](Bone* b) -> void 
+	{
+		skeleton.AddLine(
+			b->transform.position,
+			b->tipPosition(),
+			glm::fvec4(0.0f, 1.0f, 0.0f, 1.0f)
+		);
+		skeleton.AddLine(
+			b->transform.position,
+			b->transform.position + b->transform.sideDirection*0.2f,
+			glm::fvec4(1.0f, 0.0f, 0.0f, 1.0f)
+		);
 	});
 	skeleton.SendToGPU();
 
@@ -202,6 +221,11 @@ int main()
 		{
 			quit = (event.type == SDL_QUIT) || (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE);
 			
+			if (quit)
+			{
+				break;
+			}
+
 			if (event.type == SDL_KEYDOWN)
 			{
 				auto key = event.key.keysym.sym;
@@ -252,5 +276,5 @@ int main()
 		window.SwapFramebuffer();
 	}
 
-	return 0;
+	exit(0);
 }

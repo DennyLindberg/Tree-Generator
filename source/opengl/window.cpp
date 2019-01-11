@@ -14,6 +14,14 @@ OpenGLWindow::OpenGLWindow(int width, int height, bool fullscreenEnabled, bool v
 	Initialize(width, height, fullscreenEnabled, vsync);
 }
 
+OpenGLWindow::~OpenGLWindow()
+{
+	if (window)
+	{
+		SDL_DestroyWindow(window);
+	}
+}
+
 void OpenGLWindow::SetTitle(std::string newCaption)
 {
 	SDL_SetWindowTitle(window, newCaption.c_str());
