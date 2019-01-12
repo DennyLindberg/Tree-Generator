@@ -227,4 +227,22 @@ public:
 			rootBone->ForEach(callback);
 		}
 	}
+
+	void BonesToGLLines(GLLine& lines, glm::fvec4 boneColor, glm::fvec4 normalColor)
+	{
+		ForEachBone([&lines, &boneColor, &normalColor](Bone* b) -> void
+		{
+			lines.AddLine(
+				b->transform.position,
+				b->tipPosition(),
+				boneColor
+			);
+			lines.AddLine(
+				b->transform.position,
+				b->transform.position + b->transform.sideDirection*0.2f,
+				normalColor
+			);
+		});
+		lines.SendToGPU();
+	}
 };

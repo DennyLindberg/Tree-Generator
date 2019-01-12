@@ -23,7 +23,6 @@
 #include "core/randomization.h"
 #include "core/threads.h"
 #include "core/utilities.h"
-#include "core/filelistener.h"
 
 
 #include "canvas.h"
@@ -31,6 +30,7 @@
 #include "lsystem.h"
 #include "examples.h"
 #include "input.h"
+#include "shadermanager.h"
 
 /*
 	Program configurations
@@ -75,136 +75,28 @@ int main()
 	defaultTexture.UseForDrawing();
 
 	GLCube cube;
-	GLProgram liveReloadShader;
-	GLProgram lineShader;
-	std::string fragment, vertex;
-	if (LoadText(contentFolder/"basic_fragment.glsl", fragment) && LoadText(contentFolder/"basic_vertex.glsl", vertex))
-	{
-		liveReloadShader.LoadFragmentShader(fragment);
-		liveReloadShader.LoadVertexShader(vertex);
-		liveReloadShader.CompileAndLink();
-	}
-	if (LoadText(contentFolder / "line_fragment.glsl", fragment) && LoadText(contentFolder / "line_vertex.glsl", vertex))
-	{
-		lineShader.LoadFragmentShader(fragment);
-		lineShader.LoadVertexShader(vertex);
-		lineShader.CompileAndLink();
-	}
-
 	GLGrid grid;
 	grid.size = 20.0f;
 	grid.gridSpacing = 0.5f;
 
-	FileListener fileListener{ contentFolder };
-	fileListener.Bind(
-		L"basic_fragment.glsl", 
-		[&liveReloadShader](fs::path filePath) -> void {
-			wprintf(L"\r\nFragment shader changed: %Ls\r\n", filePath.c_str());
-			std::string content;
-			if (LoadText(filePath, content))
-			{
-				printf("\r\n=======\r\n%s\r\n=======\r\n\r\n", content.c_str());
-				liveReloadShader.LoadFragmentShader(content);
-				liveReloadShader.CompileAndLink();
-			}
-			else
-			{
-				printf("\r\nFailed to read file");
-			}
-		}
-	);
-	fileListener.Bind(
-		L"basic_vertex.glsl",
-		[&liveReloadShader](fs::path filePath) -> void {
-			wprintf(L"\r\nVertex shader changed: %Ls\r\n", filePath.c_str());
-			std::string content;
-			if (LoadText(filePath, content))
-			{
-				printf("\r\n=======\r\n%s\r\n=======\r\n\r\n", content.c_str());
-				liveReloadShader.LoadVertexShader(content);
-				liveReloadShader.CompileAndLink();
-			}
-			else
-			{
-				printf("\r\nFailed to read file");
-			}
-		}
-	);
-	fileListener.StartThread();
-
+	GLProgram defaultShader, lineShader;
+	ShaderManager shaderManager;
+	shaderManager.InitializeFolder(contentFolder);
+	shaderManager.LoadLiveShader(defaultShader, L"basic_vertex.glsl", L"basic_fragment.glsl");
+	shaderManager.LoadShader(lineShader, L"line_vertex.glsl", L"line_fragment.glsl");
 
 	/*
 		Build mesh using Turtle
 	*/
 	float scale = 0.05f;
 	Turtle3D turtle;
-	LSystemStringFunctional fractalTree;
-	fractalTree.axiom = "0";
-	fractalTree.productionRules['0'] = [&uniformGenerator]() -> std::string 
-	{
-		std::string result = "1[0]";
-
-		int branchCount = 2;
-		while (branchCount < 4 && uniformGenerator.RandomFloat() < 0.5f)
-		{
-			result += "[0]";
-			branchCount++;
-		}
-
-		return result + "0";
-	};
-	fractalTree.productionRules['1'] = [&uniformGenerator]() -> std::string 
-	{
-		return "11";
-	};
-
-	turtle.actions['0'] = [scale, &uniformGenerator](Turtle3D& t, int repetitions)
-	{
-		float forwardGrowth = 0.0f;
-		while (--repetitions >= 0)
-		{
-			forwardGrowth += uniformGenerator.RandomFloat();
-		}
-		forwardGrowth *= scale;
-
-		t.MoveForward(forwardGrowth);
-	};
-	turtle.actions['1'] = turtle.actions['0'];
-	turtle.actions['['] = [scale, &uniformGenerator](Turtle3D& t, int repetitions)
-	{
-		t.PushState();
-		t.Rotate(180.0f*uniformGenerator.RandomFloat(0.1f, 1.0f), 
-				 45.0f*uniformGenerator.RandomFloat(0.2f, 1.0f));
-	};
-	turtle.actions[']'] = [scale, &uniformGenerator](Turtle3D& t, int repetitions)
-	{
-		t.PopState();
-		t.Rotate(-180.0f*uniformGenerator.RandomFloat(0.1f, 1.0f),
-				  45.0f*uniformGenerator.RandomFloat(0.2f, 1.0f));
-	};
-
-	turtle.GenerateSkeleton(fractalTree.RunProduction(8));
-
-	GLLine skeleton;
-	turtle.ForEachBone([&skeleton](Bone* b) -> void 
-	{
-		skeleton.AddLine(
-			b->transform.position,
-			b->tipPosition(),
-			glm::fvec4(0.0f, 1.0f, 0.0f, 1.0f)
-		);
-		skeleton.AddLine(
-			b->transform.position,
-			b->transform.position + b->transform.sideDirection*0.2f,
-			glm::fvec4(1.0f, 0.0f, 0.0f, 1.0f)
-		);
-	});
-	skeleton.SendToGPU();
+	GLLine skeletonLines;
+	GenerateFractalPlant3D(turtle, uniformGenerator, 8, 0.05f);
+	turtle.BonesToGLLines(skeletonLines, glm::fvec4(0.0f, 1.0f, 0.0f, 1.0f), glm::fvec4(1.0f, 0.0f, 0.0f, 1.0f));
 
 	/*
 		Main application loop
 	*/
-	double lastScreenUpdate = clock.time;
 	bool quit = false;
 	bool captureMouse = false;
 	bool renderWireframe = false;
@@ -213,8 +105,7 @@ int main()
 		clock.Tick();
 		SetThreadedTime(clock.time);
 		window.SetTitle("Time: " + TimeString(clock.time) + ", FPS: " + FpsString(clock.deltaTime));
-		fileListener.ProcessCallbacksOnMainThread();
-
+		shaderManager.CheckLiveShaders();
 
 		SDL_Event event;
 		while (SDL_PollEvent(&event))
@@ -263,13 +154,13 @@ int main()
 
 		glm::mat4 mvp = camera.ViewProjectionMatrix();
 
-		//liveReloadShader.UpdateMVP(mvp);
-		//liveReloadShader.Use();
-		//cube.Draw();
+		defaultShader.UpdateMVP(mvp);
+		defaultShader.Use();
+		cube.Draw();
 
 		lineShader.UpdateMVP(mvp);
 		lineShader.Use();
-		skeleton.Draw();
+		skeletonLines.Draw();
 
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		grid.Draw(mvp);

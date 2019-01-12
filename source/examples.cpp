@@ -148,3 +148,66 @@ void DrawFractalPlant(Canvas2D& canvas, int iterations, float scale, glm::fvec2 
 		startAngle
 	);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void GenerateFractalPlant3D(Turtle3D& turtle, UniformRandomGenerator& uniformGenerator, int iterations, float scale)
+{
+	LSystemStringFunctional fractalTree;
+	fractalTree.axiom = "0";
+	fractalTree.productionRules['0'] = [&uniformGenerator]() -> std::string
+	{
+		std::string result = "1[0]";
+
+		if (uniformGenerator.RandomFloat() < 0.5f)
+		{
+			result += "[0]";
+		}
+
+		return result + "0";
+	};
+	fractalTree.productionRules['1'] = [&uniformGenerator]() -> std::string
+	{
+		return "11";
+	};
+
+	turtle.actions['0'] = [scale, &uniformGenerator](Turtle3D& t, int repetitions)
+	{
+		float forwardGrowth = 0.0f;
+		while (--repetitions >= 0)
+		{
+			forwardGrowth += uniformGenerator.RandomFloat();
+		}
+		forwardGrowth *= scale;
+
+		t.MoveForward(forwardGrowth);
+	};
+	turtle.actions['1'] = turtle.actions['0'];
+	turtle.actions['['] = [scale, &uniformGenerator](Turtle3D& t, int repetitions)
+	{
+		t.PushState();
+		t.Rotate(180.0f*uniformGenerator.RandomFloat(0.1f, 1.0f),
+			45.0f*uniformGenerator.RandomFloat(0.2f, 1.0f));
+	};
+	turtle.actions[']'] = [scale, &uniformGenerator](Turtle3D& t, int repetitions)
+	{
+		t.PopState();
+		t.Rotate(-180.0f*uniformGenerator.RandomFloat(0.1f, 1.0f),
+			45.0f*uniformGenerator.RandomFloat(0.2f, 1.0f));
+	};
+
+	turtle.GenerateSkeleton(fractalTree.RunProduction(iterations));
+}

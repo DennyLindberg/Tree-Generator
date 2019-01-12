@@ -74,6 +74,11 @@ void ListenToFileChange(std::atomic_bool* stopThread, std::filesystem::path fold
 	}
 }
 
+FileListener::FileListener()
+{
+	fileModifiedStates = new std::deque<std::atomic_bool>{};
+}
+
 FileListener::~FileListener()
 {
 	stopThread = true;
@@ -94,8 +99,9 @@ void FileListener::Bind(std::wstring filename, FileCallbackSignature callback)
 	fileModifiedStates->emplace_back(false);
 }
 
-void FileListener::StartThread()
+void FileListener::StartThread(std::filesystem::path listenToFolder)
 {
+	rootFolder = listenToFolder;
 	listenerThread = std::thread(ListenToFileChange, &stopThread, rootFolder, &callbacks, fileModifiedStates);
 }
 

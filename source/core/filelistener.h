@@ -27,19 +27,14 @@ protected:
 	std::deque<std::atomic_bool>* fileModifiedStates;
 
 public:
-	FileListener(std::filesystem::path folder)
-		: rootFolder{ folder }
-	{
-		fileModifiedStates = new std::deque<std::atomic_bool>{};
-	}
-
+	FileListener();
 	~FileListener();
 
 	FileListener(const FileListener &other) = delete;
 
 	void Bind(std::wstring filename, FileCallbackSignature callback);
 
-	void StartThread();
+	void StartThread(std::filesystem::path listenToFolder);
 
 	void ProcessCallbacksOnMainThread();
 };
