@@ -9,5 +9,6 @@ in vec4 vTCoord;
 
 void main() 
 {
-    color = texture(textureSampler, vTCoord.rg);
+    vec4 sample = texture(textureSampler, vTCoord.rg);
+    color = mix(vec4(0.2f, 0.7f, 0.3f, 1.0f), vec4(0.1f, 0.3f, 0.1f, 1.0f), sample.a);
 }

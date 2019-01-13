@@ -78,10 +78,11 @@ int main()
 	grid.size = 20.0f;
 	grid.gridSpacing = 0.5f;
 
-	GLProgram defaultShader, lineShader;
+	GLProgram defaultShader, lineShader, leafShader;
 	ShaderManager shaderManager;
 	shaderManager.InitializeFolder(contentFolder);
 	shaderManager.LoadLiveShader(defaultShader, L"basic_vertex.glsl", L"basic_fragment.glsl");
+	shaderManager.LoadLiveShader(leafShader, L"basic_vertex.glsl", L"leaf_fragment.glsl");
 	shaderManager.LoadShader(lineShader, L"line_vertex.glsl", L"line_fragment.glsl");
 
 	/*
@@ -97,7 +98,7 @@ int main()
 		Build leaf texture using turtle graphics
 	*/
 	int leafTextureSize = 128;
-	Color leafFillColor{ 0,200,0,255 };
+	Color leafFillColor{ 0,200,0,0 };
 	Color leafLineColor{ 0,100,0,255 };
 
 	Canvas2D leafCanvas{leafTextureSize, leafTextureSize};
@@ -201,8 +202,8 @@ int main()
 
 		//defaultTexture.UseForDrawing();
 		leafTexture->UseForDrawing();
-		defaultShader.UpdateMVP(projection * leafMesh.transform.ModelMatrix());
-		defaultShader.Use();
+		leafShader.UpdateMVP(projection * leafMesh.transform.ModelMatrix());
+		leafShader.Use();
 		leafMesh.Draw();
 
 		lineShader.UpdateMVP(projection);
