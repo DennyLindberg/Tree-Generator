@@ -94,59 +94,50 @@ int main()
 	turtle.BonesToGLLines(skeletonLines, glm::fvec4(0.0f, 1.0f, 0.0f, 1.0f), glm::fvec4(1.0f, 0.0f, 0.0f, 1.0f));
 
 	/*
-		Build leaf mesh and texture
+		Build leaf texture using turtle graphics
 	*/
 	int leafTextureSize = 128;
 	Color leafFillColor{ 0,200,0,255 };
 	Color leafLineColor{ 0,100,0,255 };
 
-	Canvas2D canvas{leafTextureSize, leafTextureSize};
-	canvas.Fill(leafFillColor);
+	Canvas2D leafCanvas{leafTextureSize, leafTextureSize};
+	std::shared_ptr<GLTexture> leafTexture = leafCanvas.GetTexture();
+	leafCanvas.Fill(leafFillColor);
 	std::vector<glm::fvec3> leafHull;
-	DrawFractalLeaf(leafHull, canvas, leafLineColor, 6, 1.0f, glm::fvec2(leafTextureSize * 0.5, leafTextureSize), 90);
+	DrawFractalLeaf(leafHull, leafCanvas, leafLineColor, 6, 1.0f, glm::fvec2(leafTextureSize * 0.5, leafTextureSize), 90);
 
 	glm::fvec2 previous = leafHull[0];
 	for (int i = 1; i < leafHull.size(); i++)
 	{
-		canvas.DrawLine(leafHull[i - 1], leafHull[i], leafLineColor);
+		leafCanvas.DrawLine(leafHull[i - 1], leafHull[i], leafLineColor);
 	}
-	canvas.DrawLine(leafHull.back(), leafHull[0], leafLineColor);
+	leafCanvas.DrawLine(leafHull.back(), leafHull[0], leafLineColor);
+
+	/*
+		Create leaf mesh by converting turtle graphics to vertices and UV coordinates.
+	*/
+	GLTriangleMesh leafMesh;
+	glm::fvec3 leafNormal{ 0.0f, 0.0f, 1.0f };
 
 	// Normalize leafHull dimensions to [0, 1.0]
 	for (auto& h : leafHull)
 	{
 		h = h / float(leafTextureSize);
 	}
-	std::sort(leafHull.begin(), leafHull.end(), [](const glm::vec3 &v1, const glm::vec3 &v2)
+	for (glm::fvec3& p : leafHull)
 	{
-		return v1.y < v2.y;
-	});
-
-	/*
-		Polygon mesh test
-	*/
-	GLTriangleMesh mesh;
-	glm::fvec3 planeNormal{ 0.0f, 0.0f, 1.0f };
-	mesh.AddVertex(
-		{ 0.0f, 0.0f, 0.0f }, planeNormal,
-		{ 1.0f, 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f, 0.0f, 0.0f }
-	);
-	mesh.AddVertex(
-		{ 1.0f, 0.0f, 0.0f }, planeNormal,
-		{ 0.0f, 1.0f, 0.0f, 1.0f }, { 1.0f, 1.0f, 0.0f, 0.0f }
-	);
-	mesh.AddVertex(
-		{ 1.0f, 1.0f, 0.0f }, planeNormal,
-		{ 0.0f, 0.0f, 1.0f, 1.0f }, { 1.0f, 0.0f, 0.0f, 0.0f }
-	);
-	mesh.AddVertex(
-		{ 0.0f, 1.0f, 0.0f }, planeNormal,
-		{ 1.0f, 0.0f, 1.0f, 1.0f }, { 0.0f, 0.0f, 0.0f, 0.0f }
-	);
-	mesh.DefineNewTriangle(0, 1, 2);
-	mesh.DefineNewTriangle(2, 3, 0);
-	mesh.SendToGPU();
-
+		leafMesh.AddVertex(
+			{ p.x-0.5f, 1.0f-p.y, p.z}, // convert to world coordinate system
+			leafNormal,
+			{ 1.0f, 0.0f, 0.0f, 1.0f }, // vertex color
+			{ p.x, p.y, 0.0f, 0.0f }	// texture coordinate
+		);
+	}
+	for (int i = 1; i < leafHull.size()-1; i++)
+	{
+		leafMesh.DefineNewTriangle(0, i, i+1);
+	}
+	leafMesh.SendToGPU();
 
 	/*
 		Main application loop
@@ -208,27 +199,19 @@ int main()
 
 		glm::mat4 projection = camera.ViewProjectionMatrix();
 
-		mesh.transform.scale = glm::fvec3{ float(sin(clock.time*2.0)) };
-
-		mesh.transform.position.x = float(sin(clock.time));
-		mesh.transform.position.y = float(sin(clock.time));
-
-		mesh.transform.rotation.x = float(clock.time*90.0);
-		mesh.transform.rotation.y = float(clock.time*180.0);
-		mesh.transform.rotation.z = float(clock.time*360.0);
-
-		defaultTexture.UseForDrawing();
-		defaultShader.UpdateMVP(projection * mesh.transform.ModelMatrix());
+		//defaultTexture.UseForDrawing();
+		leafTexture->UseForDrawing();
+		defaultShader.UpdateMVP(projection * leafMesh.transform.ModelMatrix());
 		defaultShader.Use();
-		mesh.Draw();
+		leafMesh.Draw();
 
-		lineShader.UpdateMVP(projection * mesh.transform.ModelMatrix());
+		lineShader.UpdateMVP(projection);
 		lineShader.Use();
 		skeletonLines.Draw();
 
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		grid.Draw(projection);
-		canvas.RenderToScreen();
+		leafCanvas.RenderToScreen();
 		window.SwapFramebuffer();
 	}
 
