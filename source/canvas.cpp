@@ -14,6 +14,11 @@ Canvas2D::Canvas2D()
 	Initialize(properties);
 }
 
+Canvas2D::Canvas2D(int width, int height)
+{
+	Initialize(GLQuadProperties{ 0.0f, 0.0f, float(width), float(height) });
+}
+
 Canvas2D::Canvas2D(GLQuadProperties properties)
 {
 	Initialize(properties);

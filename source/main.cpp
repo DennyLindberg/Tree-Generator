@@ -69,12 +69,11 @@ int main()
 	TurntableController turntable(camera);
 	turntable.position = glm::vec3{0.0f, 3.0f, 0.0f};
 	turntable.sensitivity = 0.25f;
-	turntable.Set(45.0f, 25.0f, 7.0f);
+	turntable.Set(-45.0f, 25.0f, 7.0f);
 
 	GLTexture defaultTexture{contentFolder / "default.png"};
 	defaultTexture.UseForDrawing();
 
-	GLCube cube;
 	GLGrid grid;
 	grid.size = 20.0f;
 	grid.gridSpacing = 0.5f;
@@ -93,6 +92,61 @@ int main()
 	GLLine skeletonLines;
 	GenerateFractalPlant3D(turtle, uniformGenerator, 8, 0.05f);
 	turtle.BonesToGLLines(skeletonLines, glm::fvec4(0.0f, 1.0f, 0.0f, 1.0f), glm::fvec4(1.0f, 0.0f, 0.0f, 1.0f));
+
+	/*
+		Build leaf mesh and texture
+	*/
+	int leafTextureSize = 128;
+	Color leafFillColor{ 0,200,0,255 };
+	Color leafLineColor{ 0,100,0,255 };
+
+	Canvas2D canvas{leafTextureSize, leafTextureSize};
+	canvas.Fill(leafFillColor);
+	std::vector<glm::fvec3> leafHull;
+	DrawFractalLeaf(leafHull, canvas, leafLineColor, 6, 1.0f, glm::fvec2(leafTextureSize * 0.5, leafTextureSize), 90);
+
+	glm::fvec2 previous = leafHull[0];
+	for (int i = 1; i < leafHull.size(); i++)
+	{
+		canvas.DrawLine(leafHull[i - 1], leafHull[i], leafLineColor);
+	}
+	canvas.DrawLine(leafHull.back(), leafHull[0], leafLineColor);
+
+	// Normalize leafHull dimensions to [0, 1.0]
+	for (auto& h : leafHull)
+	{
+		h = h / float(leafTextureSize);
+	}
+	std::sort(leafHull.begin(), leafHull.end(), [](const glm::vec3 &v1, const glm::vec3 &v2)
+	{
+		return v1.y < v2.y;
+	});
+
+	/*
+		Polygon mesh test
+	*/
+	GLTriangleMesh mesh;
+	glm::fvec3 planeNormal{ 0.0f, 0.0f, 1.0f };
+	mesh.AddVertex(
+		{ 0.0f, 0.0f, 0.0f }, planeNormal,
+		{ 1.0f, 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f, 0.0f, 0.0f }
+	);
+	mesh.AddVertex(
+		{ 1.0f, 0.0f, 0.0f }, planeNormal,
+		{ 0.0f, 1.0f, 0.0f, 1.0f }, { 1.0f, 1.0f, 0.0f, 0.0f }
+	);
+	mesh.AddVertex(
+		{ 1.0f, 1.0f, 0.0f }, planeNormal,
+		{ 0.0f, 0.0f, 1.0f, 1.0f }, { 1.0f, 0.0f, 0.0f, 0.0f }
+	);
+	mesh.AddVertex(
+		{ 0.0f, 1.0f, 0.0f }, planeNormal,
+		{ 1.0f, 0.0f, 1.0f, 1.0f }, { 0.0f, 0.0f, 0.0f, 0.0f }
+	);
+	mesh.DefineNewTriangle(0, 1, 2);
+	mesh.DefineNewTriangle(2, 3, 0);
+	mesh.SendToGPU();
+
 
 	/*
 		Main application loop
@@ -152,18 +206,29 @@ int main()
 		window.Clear();
 		glPolygonMode(GL_FRONT_AND_BACK, (renderWireframe? GL_LINE : GL_FILL));
 
-		glm::mat4 mvp = camera.ViewProjectionMatrix();
+		glm::mat4 projection = camera.ViewProjectionMatrix();
 
-		defaultShader.UpdateMVP(mvp);
+		mesh.transform.scale = glm::fvec3{ float(sin(clock.time*2.0)) };
+
+		mesh.transform.position.x = float(sin(clock.time));
+		mesh.transform.position.y = float(sin(clock.time));
+
+		mesh.transform.rotation.x = float(clock.time*90.0);
+		mesh.transform.rotation.y = float(clock.time*180.0);
+		mesh.transform.rotation.z = float(clock.time*360.0);
+
+		defaultTexture.UseForDrawing();
+		defaultShader.UpdateMVP(projection * mesh.transform.ModelMatrix());
 		defaultShader.Use();
-		cube.Draw();
+		mesh.Draw();
 
-		lineShader.UpdateMVP(mvp);
+		lineShader.UpdateMVP(projection * mesh.transform.ModelMatrix());
 		lineShader.Use();
 		skeletonLines.Draw();
 
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-		grid.Draw(mvp);
+		grid.Draw(projection);
+		canvas.RenderToScreen();
 		window.SwapFramebuffer();
 	}
 

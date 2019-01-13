@@ -18,6 +18,7 @@ protected:
 
 public:
 	Canvas2D();
+	Canvas2D(int width, int height);
 	Canvas2D(GLQuadProperties properties);
 	~Canvas2D() = default;
 

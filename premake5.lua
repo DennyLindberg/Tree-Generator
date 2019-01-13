@@ -41,7 +41,7 @@ workspace "Plant Generator"
     includedirs { includes_folder }
     libdirs     { libs_folder }
     links       { "opengl32", "SDL2" }
-
+    flags       { "MultiProcessorCompile" }
 
     filter { "configurations:Debug" }
         defines { "DEBUG" }

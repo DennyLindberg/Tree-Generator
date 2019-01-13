@@ -13,11 +13,61 @@ struct GLQuadProperties
 	void MatchWindowDimensions();
 };
 
-class GLMesh
+struct MeshTransform
 {
+	glm::fvec3 position{ 0.0f };
+	glm::fvec3 rotation{ 0.0f };
+	glm::fvec3 scale{ 1.0f };
+
+	glm::mat4 ModelMatrix();
+};
+
+class GLMeshInterface
+{
+protected:
+	GLuint vao = 0;
+
 public:
-	GLMesh() = default;
-	~GLMesh() = default;
+	MeshTransform transform;
+
+	GLMeshInterface();
+	~GLMeshInterface();
+
+	// Behaves like glBufferData, but for std::vector<T>.
+	template <class T>
+	void glBufferVector(GLenum glBufferType, const std::vector<T>& vector, GLenum usage = GL_STATIC_DRAW)
+	{
+		size_t count = vector.size();
+		float* frontPtr = (float*)((count > 0) ? &vector.front() : NULL);
+		glBufferData(glBufferType, count*sizeof(T), frontPtr, usage);
+	}
+};
+
+class GLTriangleMesh : public GLMeshInterface
+{
+protected:
+	GLuint positionBuffer = 0;
+	GLuint normalBuffer = 0;
+	GLuint colorBuffer = 0;
+	GLuint texCoordBuffer = 0;
+	GLuint indexBuffer = 0;
+
+public:
+	std::vector<glm::fvec3> positions;
+	std::vector<glm::fvec3> normals;
+	std::vector<glm::fvec4> colors;
+	std::vector<glm::fvec4> texCoords;
+	std::vector<unsigned int> indices;
+
+	GLTriangleMesh();
+	~GLTriangleMesh();
+
+	void Clear();
+	void SendToGPU();
+	void Draw();
+	void AddVertex(glm::fvec3 pos, glm::fvec4 color, glm::fvec4 texcoord);
+	void AddVertex(glm::fvec3 pos, glm::fvec3 normal, glm::fvec4 color, glm::fvec4 texcoord);
+	void DefineNewTriangle(unsigned int index1, unsigned int index2, unsigned int index3);
 };
 
 struct GLLineSegment
@@ -26,10 +76,9 @@ struct GLLineSegment
 	glm::fvec3 end;
 };
 
-class GLLine
+class GLLine : public GLMeshInterface
 {
 protected:
-	GLuint vao = 0;
 	GLuint positionBuffer = 0;
 	GLuint colorBuffer = 0;
 
@@ -37,90 +86,22 @@ protected:
 	std::vector<glm::fvec4> colors;
 
 public:
-	GLLine()
-	{
-		glGenVertexArrays(1, &vao);
-		glBindVertexArray(vao);
+	GLLine();
 
-		const GLuint positionAttribId = 0;
-		const GLuint colorAttribId = 1;
+	~GLLine();
 
-		// Generate buffers
-		glGenBuffers(1, &positionBuffer);
-		glGenBuffers(1, &colorBuffer);
+	void AddLine(glm::fvec3 start, glm::fvec3 end, glm::fvec4 color);
 
-		// Load positions
-		int valuesPerPosition = 3; // glm::fvec3 has 3 floats
-		glEnableVertexAttribArray(positionAttribId);
-		glBindBuffer(GL_ARRAY_BUFFER, positionBuffer);
-		glVertexAttribPointer(positionAttribId, valuesPerPosition, GL_FLOAT, false, 0, 0);
+	void Clear();
 
-		// Load colors
-		valuesPerPosition = 4; // glm::fvec4 has 4 floats
-		glEnableVertexAttribArray(colorAttribId);
-		glBindBuffer(GL_ARRAY_BUFFER, colorBuffer);
-		glVertexAttribPointer(colorAttribId, valuesPerPosition, GL_FLOAT, false, 0, 0);
+	void SendToGPU();
 
-		SendToGPU();
-	}
-
-	~GLLine()
-	{
-		glBindVertexArray(0);
-		glDeleteBuffers(1, &positionBuffer);
-		glDeleteBuffers(1, &colorBuffer);
-		glDeleteVertexArrays(1, &vao);
-	}
-
-	void AddLine(glm::fvec3 start, glm::fvec3 end, glm::fvec4 color)
-	{
-		lineSegments.push_back(GLLineSegment{std::move(start), std::move(end)});
-		colors.push_back(color);
-		colors.push_back(std::move(color));
-	}
-
-	void Clear()
-	{
-		lineSegments.clear();
-		lineSegments.shrink_to_fit();
-		colors.clear();
-		colors.shrink_to_fit();
-		SendToGPU();
-	}
-
-	void SendToGPU()
-	{
-		glBindVertexArray(vao);
-
-		// Positions
-		glBindBuffer(GL_ARRAY_BUFFER, positionBuffer);
-		size_t size = lineSegments.size();
-		bool hasData = (size > 0);
-		float* frontPtr = (float*)(hasData ? &lineSegments.front() : NULL);
-		glBufferData(GL_ARRAY_BUFFER, size * sizeof(GLLineSegment), frontPtr, GL_STATIC_DRAW);
-
-		// Colors
-		glBindBuffer(GL_ARRAY_BUFFER, colorBuffer);
-		size = colors.size();
-		hasData = (size > 0);
-		frontPtr = (float*)(hasData ? &colors.front() : NULL);
-		glBufferData(GL_ARRAY_BUFFER, size * sizeof(glm::fvec4), frontPtr, GL_STATIC_DRAW);
-	}
-
-	void Draw()
-	{
-		if (lineSegments.size() > 0)
-		{
-			glBindVertexArray(vao);
-			glDrawArrays(GL_LINES, 0, GLsizei(lineSegments.size()) * 2 * 3);
-		}
-	}
+	void Draw();
 };
 
-class GLQuad
+class GLQuad : public GLMeshInterface
 {
 protected:
-	GLuint vao = 0;
 	GLuint positionBuffer = 0;
 	GLuint texCoordBuffer = 0;
 
@@ -140,45 +121,4 @@ protected:
 	};
 
 	void CreateMeshBuffer(MeshBufferProperties properties);
-
-	template <class T>
-	void BufferVector(GLenum glBufferType, const std::vector<T>& vector, GLenum usage)
-	{
-		if (vector.size() > 0)
-		{
-			glBufferData(glBufferType, vector.size() * sizeof(T), &vector.front(), usage);
-		}
-		else
-		{
-			glBufferData(glBufferType, 0, NULL, usage);
-		}
-	}
-};
-
-class GLCube
-{
-protected:
-	GLuint vao = 0;
-	GLuint positionBuffer = 0;
-	GLuint texCoordBuffer = 0;
-
-public:
-	GLCube();
-	~GLCube();
-
-	void Draw();
-
-protected:
-	template <class T>
-	void BufferVector(GLenum glBufferType, const std::vector<T>& vector, GLenum usage)
-	{
-		if (vector.size() > 0)
-		{
-			glBufferData(glBufferType, vector.size() * sizeof(T), &vector.front(), usage);
-		}
-		else
-		{
-			glBufferData(glBufferType, 0, NULL, usage);
-		}
-	}
 };
