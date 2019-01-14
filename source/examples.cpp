@@ -1,6 +1,8 @@
 #include "examples.h"
 #include "thirdparty/glmGeom.h"
 
+using BasicTurtle2D = Turtle2D<>;
+
 void DrawFractalTree(Canvas2D& canvas, int iterations, float scale, glm::fvec2 origin, float startAngle)
 {
 	LSystemString fractalTree;
@@ -8,18 +10,18 @@ void DrawFractalTree(Canvas2D& canvas, int iterations, float scale, glm::fvec2 o
 	fractalTree.productionRules['0'] = "1[0]0";
 	fractalTree.productionRules['1'] = "11";
 
-	Turtle2D turtle;
-	turtle.actions['0'] = [scale](Turtle2D& t, Canvas2D& c) {
-		glm::fvec2 newPosition = t.position + t.GetDirection() * scale;
-		c.DrawLine(t.position, newPosition, Color{ 0,0,0,255 });
-		t.position = newPosition;
+	BasicTurtle2D turtle;
+	turtle.actions['0'] = [scale](BasicTurtle2D& t, Canvas2D& c) {
+		glm::fvec2 newPosition = t.state.position + t.GetDirection() * scale;
+		c.DrawLine(t.state.position, newPosition, Color{ 0,0,0,255 });
+		t.state.position = newPosition;
 	};
 	turtle.actions['1'] = turtle.actions['0'];
-	turtle.actions['['] = [scale](Turtle2D& t, Canvas2D& c) {
+	turtle.actions['['] = [scale](BasicTurtle2D& t, Canvas2D& c) {
 		t.PushState();
 		t.Rotate(45.0f);
 	};
-	turtle.actions[']'] = [scale](Turtle2D& t, Canvas2D& c) {
+	turtle.actions[']'] = [scale](BasicTurtle2D& t, Canvas2D& c) {
 		t.PopState();
 		t.Rotate(-45.0f);
 	};
@@ -38,14 +40,14 @@ void DrawKochCurve(Canvas2D& canvas, int iterations, float scale, glm::fvec2 ori
 	kochCurve.axiom = "F";
 	kochCurve.productionRules['F'] = "F+F-F-F+F";
 
-	Turtle2D turtle;
-	turtle.actions['F'] = [scale](Turtle2D& t, Canvas2D& c) {
-		glm::fvec2 newPosition = t.position + t.GetDirection() * scale;
-		c.DrawLine(t.position, newPosition, Color{ 0,0,0,255 });
-		t.position = newPosition;
+	BasicTurtle2D turtle;
+	turtle.actions['F'] = [scale](BasicTurtle2D& t, Canvas2D& c) {
+		glm::fvec2 newPosition = t.state.position + t.GetDirection() * scale;
+		c.DrawLine(t.state.position, newPosition, Color{ 0,0,0,255 });
+		t.state.position = newPosition;
 	};
-	turtle.actions['+'] = [scale](Turtle2D& t, Canvas2D& c) { t.Rotate(90.0f); };
-	turtle.actions['-'] = [scale](Turtle2D& t, Canvas2D& c) { t.Rotate(-90.0f); };
+	turtle.actions['+'] = [scale](BasicTurtle2D& t, Canvas2D& c) { t.Rotate(90.0f); };
+	turtle.actions['-'] = [scale](BasicTurtle2D& t, Canvas2D& c) { t.Rotate(-90.0f); };
 
 	turtle.Draw(
 		canvas,
@@ -62,15 +64,15 @@ void DrawSierpinskiTriangle(Canvas2D& canvas, int iterations, float scale, glm::
 	sierpinskiTriangle.productionRules['F'] = "F-G+F+G-F";
 	sierpinskiTriangle.productionRules['G'] = "GG";
 
-	Turtle2D turtle;
-	turtle.actions['F'] = [scale](Turtle2D& t, Canvas2D& c) {
-		glm::fvec2 newPosition = t.position + t.GetDirection() * scale;
-		c.DrawLine(t.position, newPosition, Color{ 0,0,0,255 });
-		t.position = newPosition;
+	BasicTurtle2D turtle;
+	turtle.actions['F'] = [scale](BasicTurtle2D& t, Canvas2D& c) {
+		glm::fvec2 newPosition = t.state.position + t.GetDirection() * scale;
+		c.DrawLine(t.state.position, newPosition, Color{ 0,0,0,255 });
+		t.state.position = newPosition;
 	};
 	turtle.actions['G'] = turtle.actions['F'];
-	turtle.actions['+'] = [scale](Turtle2D& t, Canvas2D& c) { t.Rotate(120.0f); };
-	turtle.actions['-'] = [scale](Turtle2D& t, Canvas2D& c) { t.Rotate(-120.0f); };
+	turtle.actions['+'] = [scale](BasicTurtle2D& t, Canvas2D& c) { t.Rotate(120.0f); };
+	turtle.actions['-'] = [scale](BasicTurtle2D& t, Canvas2D& c) { t.Rotate(-120.0f); };
 
 	turtle.Draw(
 		canvas,
@@ -87,14 +89,14 @@ void DrawDragonCurve(Canvas2D& canvas, int iterations, float scale, glm::fvec2 o
 	dragonCurve.productionRules['X'] = "X+YF+";
 	dragonCurve.productionRules['Y'] = "-FX-Y";
 
-	Turtle2D turtle;
-	turtle.actions['F'] = [scale](Turtle2D& t, Canvas2D& c) {
-		glm::fvec2 newPosition = t.position + t.GetDirection() * scale;
-		c.DrawLine(t.position, newPosition, Color{ 0,0,0,255 });
-		t.position = newPosition;
+	BasicTurtle2D turtle;
+	turtle.actions['F'] = [scale](BasicTurtle2D& t, Canvas2D& c) {
+		glm::fvec2 newPosition = t.state.position + t.GetDirection() * scale;
+		c.DrawLine(t.state.position, newPosition, Color{ 0,0,0,255 });
+		t.state.position = newPosition;
 	};
-	turtle.actions['+'] = [scale](Turtle2D& t, Canvas2D& c) { t.Rotate(-90.0f); };
-	turtle.actions['-'] = [scale](Turtle2D& t, Canvas2D& c) { t.Rotate(90.0f); };
+	turtle.actions['+'] = [scale](BasicTurtle2D& t, Canvas2D& c) { t.Rotate(-90.0f); };
+	turtle.actions['-'] = [scale](BasicTurtle2D& t, Canvas2D& c) { t.Rotate(90.0f); };
 
 	turtle.Draw(
 		canvas,
@@ -111,16 +113,16 @@ void DrawFractalPlant(Canvas2D& canvas, int iterations, float scale, glm::fvec2 
 	fractalPlant.productionRules['X'] = "F+[[X]-X]-F[-FX]+X";
 	fractalPlant.productionRules['F'] = "FF";
 
-	Turtle2D turtle;
-	turtle.actions['F'] = [scale](Turtle2D& t, Canvas2D& c) {
-		glm::fvec2 newPosition = t.position + t.GetDirection() * scale;
-		c.DrawLine(t.position, newPosition, Color{ 0,0,0,255 });
-		t.position = newPosition;
+	BasicTurtle2D turtle;
+	turtle.actions['F'] = [scale](BasicTurtle2D& t, Canvas2D& c) {
+		glm::fvec2 newPosition = t.state.position + t.GetDirection() * scale;
+		c.DrawLine(t.state.position, newPosition, Color{ 0,0,0,255 });
+		t.state.position = newPosition;
 	};
-	turtle.actions['+'] = [scale](Turtle2D& t, Canvas2D& c) { t.Rotate(-25.0f); };
-	turtle.actions['-'] = [scale](Turtle2D& t, Canvas2D& c) { t.Rotate(25.0f); };
-	turtle.actions['['] = [scale](Turtle2D& t, Canvas2D& c) { t.PushState(); };
-	turtle.actions[']'] = [scale](Turtle2D& t, Canvas2D& c) { t.PopState(); };
+	turtle.actions['+'] = [scale](BasicTurtle2D& t, Canvas2D& c) { t.Rotate(-25.0f); };
+	turtle.actions['-'] = [scale](BasicTurtle2D& t, Canvas2D& c) { t.Rotate(25.0f); };
+	turtle.actions['['] = [scale](BasicTurtle2D& t, Canvas2D& c) { t.PushState(); };
+	turtle.actions[']'] = [scale](BasicTurtle2D& t, Canvas2D& c) { t.PopState(); };
 
 	turtle.Draw(
 		canvas,
@@ -130,7 +132,138 @@ void DrawFractalPlant(Canvas2D& canvas, int iterations, float scale, glm::fvec2 
 	);
 }
 
+void DrawFractalTreeNezumiV1(Canvas2D& canvas, int iterations, float scale, glm::fvec2 origin, float startAngle)
+{
+	// https://lazynezumi.com/lsystems
 
+	LSystemString fractalTreeNezumi;
+	fractalTreeNezumi.axiom = "[B]";
+	fractalTreeNezumi.productionRules['B'] = "A[-B][+B]";
+
+	BasicTurtle2D turtle;
+	turtle.actions['A'] = [scale](BasicTurtle2D& t, Canvas2D& c) {
+		glm::fvec2 newPosition = t.state.position + t.GetDirection() * scale;
+		c.DrawLine(t.state.position, newPosition, Color{ 0,0,0,255 });
+		t.state.position = newPosition;
+	};
+	turtle.actions['-'] = [scale](BasicTurtle2D& t, Canvas2D& c) { t.Rotate(-20.0f); };
+	turtle.actions['+'] = [scale](BasicTurtle2D& t, Canvas2D& c) { t.Rotate(20.0f); };
+	turtle.actions['['] = [scale](BasicTurtle2D& t, Canvas2D& c) { t.PushState(); };
+	turtle.actions[']'] = [scale](BasicTurtle2D& t, Canvas2D& c) { t.PopState(); };
+
+	turtle.Draw(
+		canvas,
+		fractalTreeNezumi.RunProduction(iterations),
+		origin,
+		startAngle
+	);
+}
+
+void DrawFractalTreeNezumiV2(Canvas2D& canvas, int iterations, float scale, glm::fvec2 origin, float startAngle)
+{
+	// https://lazynezumi.com/lsystems
+
+	LSystemString fractalTreeNezumi;
+	fractalTreeNezumi.axiom = "[B]";
+	fractalTreeNezumi.productionRules['B'] = "A[!%-B][!%+B]!%AB";
+
+	struct NezumiProps
+	{
+		float lengthFactor = 1.0f;
+	};
+	using NezumiTurtle = Turtle2D<NezumiProps>;
+
+	NezumiTurtle turtle;
+	turtle.actions['A'] = [scale](NezumiTurtle& t, Canvas2D& c)
+	{
+		NezumiProps& p = t.state.properties;
+		glm::fvec2 newPosition = t.state.position + t.GetDirection() * scale * p.lengthFactor;
+		c.DrawLine(t.state.position, newPosition, Color{ 0,0,0,255 });
+		t.state.position = newPosition;
+	};
+	turtle.actions['%'] = [](NezumiTurtle& t, Canvas2D& c)
+	{
+		NezumiProps& p = t.state.properties;
+		p.lengthFactor /= 1.3f;
+	};
+	turtle.actions['-'] = [](NezumiTurtle& t, Canvas2D& c) { t.Rotate(-20.0f); };
+	turtle.actions['+'] = [](NezumiTurtle& t, Canvas2D& c) { t.Rotate(20.0f); };
+	turtle.actions['['] = [](NezumiTurtle& t, Canvas2D& c) { t.PushState(); };
+	turtle.actions[']'] = [](NezumiTurtle& t, Canvas2D& c) { t.PopState(); };
+
+	turtle.Draw(
+		canvas,
+		fractalTreeNezumi.RunProduction(iterations),
+		origin,
+		startAngle
+	);
+}
+
+void DrawFractalTreeNezumiV3(Canvas2D& canvas, int iterations, float scale, glm::fvec2 origin, float startAngle)
+{
+	// https://lazynezumi.com/lsystems
+
+	UniformRandomGenerator uniformGenerator;
+	LSystemString fractalTreeNezumi;
+	fractalTreeNezumi.axiom = "[B]";
+	fractalTreeNezumi.productionRules['B'] = "A[!%-B][!%+B]!%AB";
+
+	bool skipBranch = false;
+
+	struct NezumiProps
+	{
+		float lengthFactor = 1.0f;
+	};
+	using NezumiTurtle = Turtle2D<NezumiProps>;
+	NezumiTurtle turtle;
+
+	turtle.actions['A'] = [scale, &skipBranch, &uniformGenerator](NezumiTurtle& t, Canvas2D& c)
+	{
+		if (skipBranch) return;
+
+		NezumiProps& p = t.state.properties;
+		float randomLengthFactor = 1.0f + uniformGenerator.RandomFloat(0.0f, 0.15f);
+		glm::fvec2 newPosition = t.state.position + t.GetDirection() * scale * p.lengthFactor * randomLengthFactor;
+		c.DrawLine(t.state.position, newPosition, Color{ 0,0,0,255 });
+		t.state.position = newPosition;
+	};
+	turtle.actions['%'] = [&skipBranch](NezumiTurtle& t, Canvas2D& c)
+	{
+		if (skipBranch) return;
+
+		NezumiProps& p = t.state.properties;
+		p.lengthFactor /= 1.6f;
+	};
+	turtle.actions['-'] = [&skipBranch, &uniformGenerator](NezumiTurtle& t, Canvas2D& c)
+	{ 
+		if (skipBranch) return;
+
+		t.Rotate(-20.0f + uniformGenerator.RandomFloat(-5.0f, 5.0f));
+	};
+	turtle.actions['+'] = [&skipBranch, &uniformGenerator](NezumiTurtle& t, Canvas2D& c)
+	{ 
+		if (skipBranch) return;
+
+		t.Rotate(20.0f + uniformGenerator.RandomFloat(-5.0f, 5.0f)); 
+	};
+	turtle.actions['['] = [&skipBranch, &uniformGenerator](NezumiTurtle& t, Canvas2D& c)
+	{ 
+		skipBranch = uniformGenerator.RandomFloat() > 0.8;
+		t.PushState(); 
+	};
+	turtle.actions[']'] = [&skipBranch](NezumiTurtle& t, Canvas2D& c)
+	{ 
+		t.PopState(); 
+		skipBranch = false;
+	};
+
+	turtle.Draw(
+		canvas,
+		fractalTreeNezumi.RunProduction(iterations),
+		origin,
+		startAngle
+	);
+}
 
 void DrawFractalLeaf(std::vector<glm::fvec3>& generatedHull, Canvas2D& canvas, Color color, int iterations, float scale, glm::fvec2 origin, float startAngle)
 {
@@ -140,22 +273,22 @@ void DrawFractalLeaf(std::vector<glm::fvec3>& generatedHull, Canvas2D& canvas, C
 	fractalLeaf.productionRules['1'] = "11";
 	fractalLeaf.productionRules['e'] = fractalLeaf.productionRules['0'];
 
-	Turtle2D turtle;
+	BasicTurtle2D turtle;
 	std::vector<glm::fvec3> leafPositions{ glm::fvec3{origin, 1.0f} };
-	turtle.actions['0'] = [scale, &color](Turtle2D& t, Canvas2D& c) {
-		glm::fvec2 newPosition = t.position + t.GetDirection() * scale;
-		c.DrawLine(t.position, newPosition, color);
-		t.position = newPosition;
+	turtle.actions['0'] = [scale, &color](BasicTurtle2D& t, Canvas2D& c) {
+		glm::fvec2 newPosition = t.state.position + t.GetDirection() * scale;
+		c.DrawLine(t.state.position, newPosition, color);
+		t.state.position = newPosition;
 	};
 	turtle.actions['1'] = turtle.actions['0'];
-	turtle.actions['e'] = [scale, &leafPositions](Turtle2D& t, Canvas2D& c) {
-		leafPositions.push_back(glm::fvec3(t.position, 0.0f));
+	turtle.actions['e'] = [scale, &leafPositions](BasicTurtle2D& t, Canvas2D& c) {
+		leafPositions.push_back(glm::fvec3(t.state.position, 0.0f));
 	};
 
-	turtle.actions['['] = [scale](Turtle2D& t, Canvas2D& c) { t.PushState(); };
-	turtle.actions[']'] = [scale](Turtle2D& t, Canvas2D& c) { t.PopState();  };
-	turtle.actions['+'] = [scale](Turtle2D& t, Canvas2D& c) { t.Rotate(45.0f); };
-	turtle.actions['-'] = [scale](Turtle2D& t, Canvas2D& c) { t.Rotate(-45.0f); };
+	turtle.actions['['] = [scale](BasicTurtle2D& t, Canvas2D& c) { t.PushState(); };
+	turtle.actions[']'] = [scale](BasicTurtle2D& t, Canvas2D& c) { t.PopState();  };
+	turtle.actions['+'] = [scale](BasicTurtle2D& t, Canvas2D& c) { t.Rotate(45.0f); };
+	turtle.actions['-'] = [scale](BasicTurtle2D& t, Canvas2D& c) { t.Rotate(-45.0f); };
 
 	turtle.Draw(
 		canvas,

@@ -200,7 +200,6 @@ int main()
 
 		glm::mat4 projection = camera.ViewProjectionMatrix();
 
-		//defaultTexture.UseForDrawing();
 		leafTexture->UseForDrawing();
 		leafShader.UpdateMVP(projection * leafMesh.transform.ModelMatrix());
 		leafShader.Use();
@@ -212,6 +211,8 @@ int main()
 
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		grid.Draw(projection);
+
+		glClear(GL_DEPTH_BUFFER_BIT);
 		leafCanvas.RenderToScreen();
 		window.SwapFramebuffer();
 	}
