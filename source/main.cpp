@@ -44,6 +44,45 @@ static const float WINDOW_RATIO = WINDOW_WIDTH / float(WINDOW_HEIGHT);
 
 namespace fs = std::filesystem;
 
+using BranchVector = std::vector<std::vector<Bone<FractalTree3DProps>*>>;
+void BuildBranches(BranchVector& branches, Bone<FractalTree3DProps>* bone)
+{
+	using TBone = Bone<FractalTree3DProps>;
+	using BoneVector = std::vector<TBone*>;
+
+	branches.clear();
+	branches.shrink_to_fit();
+	branches.push_back({ bone });
+
+	int activeIndex = 0;
+	while (activeIndex < branches.size())
+	{
+		BoneVector& currentBranch = branches[activeIndex];
+		TBone* firstBone = currentBranch[0];
+
+		BoneVector potentials{ firstBone };
+		TBone* lastChild = firstBone->lastChild;
+		while (lastChild)
+		{
+			currentBranch.push_back(lastChild);
+			potentials.push_back({ lastChild });
+			lastChild = lastChild->lastChild;
+		}
+
+		for (TBone* p : potentials)
+		{
+			TBone* sibling = p->previousSibling;
+			while (sibling)
+			{
+				branches.push_back({ sibling });
+				sibling = sibling->previousSibling;
+			}
+		}
+
+		activeIndex++;
+	}
+}
+
 /*
 	Application
 */
@@ -93,20 +132,38 @@ int main()
 	GenerateFractalTree3D(uniformGenerator, 10,
 		[&skeletonLines](Bone<FractalTree3DProps>* bone) -> void
 	{
-		const float scale = 2.0f;
-		bone->transform.position *= scale;
-		bone->length *= scale;
+		using TBone = Bone<FractalTree3DProps>;
 
-		skeletonLines.AddLine(
-			bone->transform.position,
-			bone->tipPosition(),
-			glm::fvec4(0.0f, 1.0f, 0.0f, 1.0f)
-		);
-		skeletonLines.AddLine(
-			bone->transform.position,
-			bone->transform.position + bone->transform.sideDirection*bone->transform.properties.thickness,
-			glm::fvec4(1.0f, 0.0f, 0.0f, 1.0f)
-		);
+		std::function<void(TBone*)> scaleBones = [](TBone* bone) -> void
+		{
+			float scale = 2.0f;
+			bone->transform.position *= scale;
+			bone->length *= scale;
+		};
+		bone->ForEach(scaleBones);
+
+		BranchVector branches;
+		BuildBranches(branches, bone);
+
+		// TODO: Replace AddLine calls and build mesh instead
+		for (int i = 0; i < branches.size(); ++i)
+		{
+			auto& branch = branches[i];
+			for (TBone* b : branch)
+			{
+				skeletonLines.AddLine(
+					b->transform.position,
+					b->tipPosition(),
+					glm::fvec4(0.0f, 1.0f, 0.0f, 1.0f)
+				);
+
+				skeletonLines.AddLine(
+					b->transform.position,
+					b->transform.position + b->transform.sideDirection*b->transform.properties.thickness,
+					glm::fvec4(1.0f, 0.0f, 0.0f, 1.0f)
+				);
+			}
+		}
 	});
 	skeletonLines.SendToGPU();
 

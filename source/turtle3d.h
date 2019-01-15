@@ -28,6 +28,8 @@ struct Bone
 
 	TBone* parent = nullptr;
 	TBone* firstChild = nullptr;
+	TBone* lastChild = nullptr;
+	TBone* previousSibling = nullptr;
 	TBone* nextSibling = nullptr;
 
 	TurtleTransform<OptionalState> transform;
@@ -65,24 +67,20 @@ struct Bone
 
 	TBone* NewChild()
 	{
-		TBone* newChild = nullptr;
+		TBone* newChild = new TBone();
 		if (!firstChild)
 		{
-			firstChild = new TBone();
-			newChild = firstChild;
+			firstChild = newChild;
+			lastChild = newChild;
 		}
 		else
 		{
-			TBone* sibling = firstChild;
-			while (sibling->nextSibling)
-			{
-				sibling = sibling->nextSibling;
-			}
-
-			sibling->nextSibling = new TBone();
-			newChild = sibling->nextSibling;
+			newChild->previousSibling = lastChild;
+			lastChild->nextSibling = newChild;
+			lastChild = newChild;
 		}
 
+		newChild->parent = this;
 		newChild->transform.position = this->tipPosition();
 
 		return newChild;
@@ -135,7 +133,8 @@ public:
 	std::map<char, std::function<void(Turtle3D&, int)>> actions;
 
 	TTransform transform;
-	std::stack<TurtleBone*> boneStack;
+	std::stack<TTransform> transformStack;
+	std::stack<TurtleBone*> branchStack;
 	TurtleBone* activeBone = nullptr;
 	TurtleBone* rootBone = nullptr;
 
@@ -155,7 +154,8 @@ public:
 			rootBone = nullptr;
 			activeBone = nullptr;
 		}
-		boneStack = std::stack<TurtleBone*>();
+		transformStack = std::stack<TTransform>();
+		branchStack = std::stack<TurtleBone*>();
 	}
 
 	void GenerateSkeleton(std::string& symbols, TTransform startTransform = TTransform{})
@@ -182,16 +182,18 @@ public:
 
 	void PushState()
 	{
-		boneStack.push(activeBone);
+		branchStack.push(activeBone);
+
+		transformStack.push(transform);
 	}
 
 	void PopState()
 	{
-		activeBone = boneStack.top();
-		boneStack.pop();
+		transform = transformStack.top();
+		transformStack.pop();
 
-		transform = activeBone->transform;
-		transform.position = activeBone->tipPosition();
+		activeBone = branchStack.top();
+		branchStack.pop();
 	}
 
 	// Angles are related to the forward and side basis vectors.
@@ -220,9 +222,12 @@ public:
 
 	void MoveForward(float distance)
 	{
-		glm::fvec3 oldPosition = transform.position;
+		PushBone(distance);
 		transform.position += transform.forwardDirection*distance;
+	}
 
+	void PushBone(float length)
+	{
 		if (!rootBone)
 		{
 			rootBone = new TurtleBone{};
@@ -233,8 +238,7 @@ public:
 			activeBone = activeBone->NewChild();
 		}
 		activeBone->transform = transform;
-		activeBone->transform.position = oldPosition;
-		activeBone->length = distance;
+		activeBone->length = length;
 	}
 
 	void ForEachBone(std::function<void(TurtleBone*)> callback)

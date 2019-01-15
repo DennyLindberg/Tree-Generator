@@ -302,6 +302,12 @@ void DrawFractalLeaf(std::vector<glm::fvec3>& generatedHull, Canvas2D& canvas, C
 
 
 
+
+
+
+
+
+
 void GenerateFractalTree3D(UniformRandomGenerator& uniformGenerator, int iterations, std::function<void(Bone<FractalTree3DProps>*)> forEachBoneCallback)
 {
 	// https://lazynezumi.com/lsystems
@@ -332,8 +338,6 @@ void GenerateFractalTree3D(UniformRandomGenerator& uniformGenerator, int iterati
 	turtle.actions['['] = [&uniformGenerator](Turtle& t, int repetitions)
 	{
 		t.PushState();
-
-		t.transform.properties.branchId++;
 		t.transform.properties.thickness *= 0.75f;
 	};
 	turtle.actions[']'] = [](Turtle& t, int repetitions) { t.PopState(); };
@@ -358,5 +362,5 @@ void GenerateFractalTree3D(UniformRandomGenerator& uniformGenerator, int iterati
 	};
 
 	turtle.GenerateSkeleton(fractalTree.RunProduction(iterations));
-	turtle.ForEachBone(forEachBoneCallback);
+	forEachBoneCallback(turtle.rootBone);
 }

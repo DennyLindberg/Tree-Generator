@@ -68,9 +68,9 @@ void GenerateFractalPlant3D(Turtle3D<T>& turtle, UniformRandomGenerator& uniform
 
 struct FractalTree3DProps
 {
-	float lengthFactor = 1.0f;
-	int branchId = 0;
 	int branchDepth = 0;
+	int branch = 0;
+	float lengthFactor = 1.0f;
 	float thickness = 1.0f;
 };
 
