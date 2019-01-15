@@ -311,50 +311,88 @@ void DrawFractalLeaf(std::vector<glm::fvec3>& generatedHull, Canvas2D& canvas, C
 
 
 
-void GenerateFractalPlant3D(Turtle3D& turtle, UniformRandomGenerator& uniformGenerator, int iterations, float scale)
+void GenerateFractalTree3D(GLLine& skeletonResult, UniformRandomGenerator& uniformGenerator, int iterations, float scale)
 {
-	LSystemStringFunctional fractalTree;
-	fractalTree.axiom = "0";
-	fractalTree.productionRules['0'] = [&uniformGenerator]() -> std::string
+	// https://lazynezumi.com/lsystems
+	LSystemString fractalTree;
+	fractalTree.axiom = "B";
+	fractalTree.productionRules['B'] = "AC";
+	fractalTree.productionRules['C'] = "AA[%+B][%++B][%+++B]%B";
+
+	struct NezumiProps
 	{
-		std::string result = "1[0]";
-
-		if (uniformGenerator.RandomFloat() < 0.5f)
-		{
-			result += "[0]";
-		}
-
-		return result + "0";
+		float lengthFactor = 1.0f;
+		int branchId = 0;
+		int branchDepth = 0;
+		float thickness = 1.0f;
 	};
-	fractalTree.productionRules['1'] = [&uniformGenerator]() -> std::string
+	using NezumiTurtle = Turtle3D<NezumiProps>;
+	NezumiTurtle turtle;
+
+	turtle.actions['A'] = [&uniformGenerator](NezumiTurtle& t, int repetitions)
 	{
-		return "11";
-	};
+		NezumiProps& p = t.transform.properties;
+		t.Rotate(
+			uniformGenerator.RandomFloat(0.0f, 45.0f),
+			uniformGenerator.RandomFloat(-10.0f, 10.0f)
+		);
+		p.branchDepth++;
+		p.thickness *= 0.75;
 
-	turtle.actions['0'] = [scale, &uniformGenerator](Turtle3D& t, int repetitions)
-	{
-		float forwardGrowth = 0.0f;
-		while (--repetitions >= 0)
-		{
-			forwardGrowth += uniformGenerator.RandomFloat();
-		}
-		forwardGrowth *= scale;
+		float randomLengthFactor = 1.0f + uniformGenerator.RandomFloat(0.0f, 0.5f);
+		t.MoveForward(p.lengthFactor * randomLengthFactor);
 
-		t.MoveForward(forwardGrowth);
 	};
-	turtle.actions['1'] = turtle.actions['0'];
-	turtle.actions['['] = [scale, &uniformGenerator](Turtle3D& t, int repetitions)
+	turtle.actions['C'] = turtle.actions['A'];
+	turtle.actions['%'] = [](NezumiTurtle& t, int repetitions) { t.transform.properties.lengthFactor /= 1.2f; };
+	turtle.actions['['] = [&uniformGenerator](NezumiTurtle& t, int repetitions)
 	{
 		t.PushState();
-		t.Rotate(180.0f*uniformGenerator.RandomFloat(0.1f, 1.0f),
-			45.0f*uniformGenerator.RandomFloat(0.2f, 1.0f));
+
+		t.transform.properties.branchId++;
+		t.transform.properties.thickness *= 0.75f;
 	};
-	turtle.actions[']'] = [scale, &uniformGenerator](Turtle3D& t, int repetitions)
-	{
-		t.PopState();
-		t.Rotate(-180.0f*uniformGenerator.RandomFloat(0.1f, 1.0f),
-			45.0f*uniformGenerator.RandomFloat(0.2f, 1.0f));
+	turtle.actions[']'] = [](NezumiTurtle& t, int repetitions) { t.PopState(); };
+
+	turtle.actions['+'] = [&uniformGenerator, &iterations](NezumiTurtle& t, int repetitions)
+	{ 
+		float depth = float(t.transform.properties.branchDepth);
+
+		float yawRandOffset = uniformGenerator.RandomFloat(-5.0f, 5.0f);
+		float yawBranchOffset = 45.0f*depth + uniformGenerator.RandomFloat(-25.0f, -25.0f);
+		float pitchRandOffset = uniformGenerator.RandomFloat(-5.0f, 5.0f);
+
+		t.Rotate(
+			120.0f * repetitions + yawBranchOffset + yawRandOffset, 
+			25.0f + pitchRandOffset
+		);
+
+		// Weigh down the branch based on length from root
+		glm::fvec3 rotVec = glm::cross(glm::fvec3{ 0.0f, 1.0f, 0.0f }, t.transform.forwardDirection);
+		float degrees = depth * iterations;
+		t.Rotate(degrees, rotVec);
 	};
 
+
 	turtle.GenerateSkeleton(fractalTree.RunProduction(iterations));
+	turtle.ForEachBone([scale](auto* bone) -> void
+	{
+		bone->transform.position *= scale;
+		bone->length *= scale;
+	});
+	//turtle.BonesToGLLines(skeletonResult, glm::fvec4(0.0f, 1.0f, 0.0f, 1.0f), glm::fvec4(1.0f, 0.0f, 0.0f, 1.0f));
+	turtle.ForEachBone([&skeletonResult](auto* b) -> void
+	{
+		skeletonResult.AddLine(
+			b->transform.position,
+			b->tipPosition(),
+			glm::fvec4(0.0f, 1.0f, 0.0f, 1.0f)
+		);
+		skeletonResult.AddLine(
+			b->transform.position,
+			b->transform.position + b->transform.sideDirection*b->transform.properties.thickness,
+			glm::fvec4(1.0f, 0.0f, 0.0f, 1.0f)
+		);
+	});
+	skeletonResult.SendToGPU();
 }

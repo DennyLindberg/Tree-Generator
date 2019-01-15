@@ -91,8 +91,7 @@ int main()
 	float scale = 0.05f;
 	Turtle3D turtle;
 	GLLine skeletonLines;
-	GenerateFractalPlant3D(turtle, uniformGenerator, 8, 0.05f);
-	turtle.BonesToGLLines(skeletonLines, glm::fvec4(0.0f, 1.0f, 0.0f, 1.0f), glm::fvec4(1.0f, 0.0f, 0.0f, 1.0f));
+	GenerateFractalTree3D(skeletonLines, uniformGenerator, 10, 2.0f);
 
 	/*
 		Build leaf texture using turtle graphics

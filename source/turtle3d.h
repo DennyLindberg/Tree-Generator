@@ -5,11 +5,13 @@
 #include <stack>
 #include <functional>
 
+template<class OptionalState = int>
 struct TurtleTransform
 {
 	glm::fvec3 position = glm::fvec3{ 0.0f };
 	glm::fvec3 forwardDirection = glm::fvec3{ 0.0f, 1.0f, 0.0f }; // normalized, orthogonal, "up" basis vector. Local Y+ defined in world space coordinates.
 	glm::fvec3 sideDirection = glm::fvec3{ 0.0f, 0.0f, 1.0f }; // normalized, orthogonal, "side" basis vector. Local Z+ defined in world space coordinates.
+	OptionalState properties;
 
 	void Clear()
 	{
@@ -19,13 +21,16 @@ struct TurtleTransform
 	}
 };
 
+template<class OptionalState = int>
 struct Bone
 {
-	Bone* parent = nullptr;
-	Bone* firstChild = nullptr;
-	Bone* nextSibling = nullptr;
+	using TBone = Bone<OptionalState>;
 
-	TurtleTransform transform;
+	TBone* parent = nullptr;
+	TBone* firstChild = nullptr;
+	TBone* nextSibling = nullptr;
+
+	TurtleTransform<OptionalState> transform;
 	float length = 0.0f;
 
 	Bone() = default;
@@ -58,23 +63,23 @@ struct Bone
 		}
 	}
 
-	Bone* NewChild()
+	TBone* NewChild()
 	{
-		Bone* newChild = nullptr;
+		TBone* newChild = nullptr;
 		if (!firstChild)
 		{
-			firstChild = new Bone();
+			firstChild = new TBone();
 			newChild = firstChild;
 		}
 		else
 		{
-			Bone* sibling = firstChild;
+			TBone* sibling = firstChild;
 			while (sibling->nextSibling)
 			{
 				sibling = sibling->nextSibling;
 			}
 
-			sibling->nextSibling = new Bone();
+			sibling->nextSibling = new TBone();
 			newChild = sibling->nextSibling;
 		}
 
@@ -103,7 +108,7 @@ struct Bone
 		}
 	}
 
-	void ForEach(std::function<void(Bone*)>& callback)
+	void ForEach(std::function<void(TBone*)>& callback)
 	{
 		callback(this);
 
@@ -119,15 +124,20 @@ struct Bone
 	}
 };
 
+template<class OptionalState = int>
 class Turtle3D
 {
+protected:
+	using TurtleBone = Bone<OptionalState>;
+	using TTransform = TurtleTransform<OptionalState>;
+
 public:
 	std::map<char, std::function<void(Turtle3D&, int)>> actions;
 
-	TurtleTransform transform;
-	std::stack<Bone*> boneStack;
-	Bone* activeBone = nullptr;
-	Bone* rootBone = nullptr;
+	TTransform transform;
+	std::stack<TurtleBone*> boneStack;
+	TurtleBone* activeBone = nullptr;
+	TurtleBone* rootBone = nullptr;
 
 	Turtle3D()
 	{
@@ -145,10 +155,10 @@ public:
 			rootBone = nullptr;
 			activeBone = nullptr;
 		}
-		boneStack = std::stack<Bone*>();
+		boneStack = std::stack<TurtleBone*>();
 	}
 
-	void GenerateSkeleton(std::string& symbols, TurtleTransform startTransform = TurtleTransform{})
+	void GenerateSkeleton(std::string& symbols, TTransform startTransform = TTransform{})
 	{
 		Clear();
 		transform = std::move(startTransform);
@@ -201,6 +211,13 @@ public:
 		transform.sideDirection = pitchRot * glm::fvec4(transform.sideDirection, 0.0f);
 	}
 
+	void Rotate(float degrees, glm::fvec3 rotateVector)
+	{
+		auto rotateMatrix = glm::rotate(glm::mat4{ 1.0f }, glm::radians(degrees), rotateVector);
+		transform.forwardDirection = rotateMatrix * glm::fvec4(transform.forwardDirection, 0.0f);
+		transform.sideDirection = rotateMatrix * glm::fvec4(transform.sideDirection, 0.0f);
+	}
+
 	void MoveForward(float distance)
 	{
 		glm::fvec3 oldPosition = transform.position;
@@ -208,7 +225,7 @@ public:
 
 		if (!rootBone)
 		{
-			rootBone = new Bone{};
+			rootBone = new TurtleBone{};
 			activeBone = rootBone;
 		}
 		else
@@ -220,7 +237,7 @@ public:
 		activeBone->length = distance;
 	}
 
-	void ForEachBone(std::function<void(Bone*)> callback)
+	void ForEachBone(std::function<void(TurtleBone*)> callback)
 	{
 		if (rootBone && callback)
 		{
@@ -230,7 +247,7 @@ public:
 
 	void BonesToGLLines(GLLine& lines, glm::fvec4 boneColor, glm::fvec4 normalColor)
 	{
-		ForEachBone([&lines, &boneColor, &normalColor](Bone* b) -> void
+		ForEachBone([&lines, &boneColor, &normalColor](TurtleBone* b) -> void
 		{
 			lines.AddLine(
 				b->transform.position,
