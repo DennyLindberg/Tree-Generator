@@ -65,4 +65,13 @@ void GenerateFractalPlant3D(Turtle3D<T>& turtle, UniformRandomGenerator& uniform
 	turtle.GenerateSkeleton(fractalTree.RunProduction(iterations));
 }
 
-void GenerateFractalTree3D(GLLine& skeletonResult, UniformRandomGenerator& uniformGenerator, int iterations, float scale = 0.1f);
+
+struct FractalTree3DProps
+{
+	float lengthFactor = 1.0f;
+	int branchId = 0;
+	int branchDepth = 0;
+	float thickness = 1.0f;
+};
+
+void GenerateFractalTree3D(UniformRandomGenerator& uniformGenerator, int iterations, std::function<void(Bone<FractalTree3DProps>*)> forEachBoneCallback);

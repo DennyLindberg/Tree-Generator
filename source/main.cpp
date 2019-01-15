@@ -88,10 +88,27 @@ int main()
 	/*
 		Build mesh using Turtle
 	*/
-	float scale = 0.05f;
 	Turtle3D turtle;
 	GLLine skeletonLines;
-	GenerateFractalTree3D(skeletonLines, uniformGenerator, 10, 2.0f);
+	GenerateFractalTree3D(uniformGenerator, 10,
+		[&skeletonLines](Bone<FractalTree3DProps>* bone) -> void
+	{
+		const float scale = 2.0f;
+		bone->transform.position *= scale;
+		bone->length *= scale;
+
+		skeletonLines.AddLine(
+			bone->transform.position,
+			bone->tipPosition(),
+			glm::fvec4(0.0f, 1.0f, 0.0f, 1.0f)
+		);
+		skeletonLines.AddLine(
+			bone->transform.position,
+			bone->transform.position + bone->transform.sideDirection*bone->transform.properties.thickness,
+			glm::fvec4(1.0f, 0.0f, 0.0f, 1.0f)
+		);
+	});
+	skeletonLines.SendToGPU();
 
 	/*
 		Build leaf texture using turtle graphics
