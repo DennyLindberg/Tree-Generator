@@ -352,28 +352,34 @@ void BuildBranchesForFractalTree3D(std::vector<FractalBranch>& branches, Bone<Fr
 	}
 }
 
-void GenerateFractalTree3D(UniformRandomGenerator& uniformGenerator, int iterations, std::function<void(Bone<FractalTree3DProps>*, std::vector<FractalBranch>&)> onResultCallback)
+void GenerateFractalTree3D(UniformRandomGenerator& uniformGenerator, int iterations, int subdivisions, std::function<void(Bone<FractalTree3DProps>*, std::vector<FractalBranch>&)> onResultCallback)
 {
 	// https://lazynezumi.com/lsystems
 	LSystemString fractalTree;
 	fractalTree.axiom = "B";
-	fractalTree.productionRules['B'] = "AC";
-	fractalTree.productionRules['C'] = "AA[%+B][%++B][%+++B]%B";
+	fractalTree.productionRules['B'] = "AAC";
+	fractalTree.productionRules['C'] = "A[%+B][%++B][%+++B]%B";
 
 	using Turtle = Turtle3D<FractalTree3DProps>;
 	Turtle turtle;
 
-	turtle.actions['A'] = [&uniformGenerator](Turtle& t, int repetitions)
+	subdivisions = (subdivisions == 0) ? 1 : subdivisions;
+	turtle.actions['A'] = [&uniformGenerator, subdivisions](Turtle& t, int repetitions)
 	{
+		int divisions = subdivisions;
+
 		FractalTree3DProps& p = t.transform.properties;
-		t.Rotate(
-			uniformGenerator.RandomFloat(0.0f, 45.0f),
-			uniformGenerator.RandomFloat(-10.0f, 10.0f)
-		);
-
 		float randomLengthFactor = 1.0f + uniformGenerator.RandomFloat(0.0f, 0.5f);
-		t.MoveForward(p.lengthFactor * randomLengthFactor);
+		float drawLength = p.lengthFactor * randomLengthFactor / float(divisions) * repetitions;
+		float yaw = uniformGenerator.RandomFloat(0.0f, 45.0f) / float(divisions);
+		float pitch = uniformGenerator.RandomFloat(-10.0f, 10.0f) / float(divisions);
+		while (divisions > 0)
+		{
+			t.Rotate(yaw, pitch);
+			t.MoveForward(drawLength);
 
+			divisions--;
+		}
 	};
 	turtle.actions['C'] = turtle.actions['A'];
 	turtle.actions['%'] = [](Turtle& t, int repetitions) { t.transform.properties.lengthFactor /= 1.2f; };
@@ -389,7 +395,7 @@ void GenerateFractalTree3D(UniformRandomGenerator& uniformGenerator, int iterati
 
 		float yawRandOffset = uniformGenerator.RandomFloat(-5.0f, 5.0f);
 		float yawBranchOffset = 45.0f*depth + uniformGenerator.RandomFloat(-25.0f, -25.0f);
-		float pitchRandOffset = uniformGenerator.RandomFloat(-5.0f, 5.0f);
+		float pitchRandOffset = uniformGenerator.RandomFloat(-5.0f, 10.0f);
 
 		t.Rotate(
 			120.0f * repetitions + yawBranchOffset + yawRandOffset,
@@ -398,7 +404,7 @@ void GenerateFractalTree3D(UniformRandomGenerator& uniformGenerator, int iterati
 
 		// Weigh down the branch based on length from root
 		glm::fvec3 rotVec = glm::cross(glm::fvec3{ 0.0f, 1.0f, 0.0f }, t.transform.forwardDirection);
-		float degrees = depth * iterations;
+		float degrees = iterations/float(depth) * 5.0f;
 		t.Rotate(degrees, rotVec);
 	};
 
@@ -406,6 +412,5 @@ void GenerateFractalTree3D(UniformRandomGenerator& uniformGenerator, int iterati
 
 	std::vector<FractalBranch> branches;
 	BuildBranchesForFractalTree3D(branches, turtle.rootBone);
-
 	onResultCallback(turtle.rootBone, branches);
 }
