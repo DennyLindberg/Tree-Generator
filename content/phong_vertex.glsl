@@ -16,7 +16,9 @@ void main()
 {
     gl_Position = mvp * vec4(vertexPosition, 1.0f);
     vPosition = vertexPosition;
+
     vNormal = vertexNormal;
+
     vColor = vertexColor;
     vTCoord = vertexTCoord;
 }

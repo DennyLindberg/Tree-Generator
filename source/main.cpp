@@ -81,20 +81,25 @@ int main()
 	grid.size = 20.0f;
 	grid.gridSpacing = 0.5f;
 
-	GLProgram defaultShader, lineShader, leafShader;
+	GLProgram defaultShader, lineShader, leafShader, phongShader;
 	ShaderManager shaderManager;
 	shaderManager.InitializeFolder(contentFolder);
 	shaderManager.LoadLiveShader(defaultShader, L"basic_vertex.glsl", L"basic_fragment.glsl");
 	shaderManager.LoadLiveShader(leafShader, L"basic_vertex.glsl", L"leaf_fragment.glsl");
+	shaderManager.LoadLiveShader(phongShader, L"phong_vertex.glsl", L"phong_fragment.glsl");
 	shaderManager.LoadShader(lineShader, L"line_vertex.glsl", L"line_fragment.glsl");
+
+	phongShader.Use();
+	phongShader.SetUniformVec4("lightColor", glm::fvec4{1.0f, 1.0f, 1.0f, 1.0f});
 
 	/*
 		Build mesh using Turtle
 	*/
 	Turtle3D turtle;
 	GLLine skeletonLines;
+	GLTriangleMesh branchMeshes;
 	GenerateFractalTree3D(uniformGenerator, 10,
-		[&skeletonLines](Bone<FractalTree3DProps>* root, std::vector<FractalBranch>& branches) -> void
+		[&skeletonLines, &branchMeshes](Bone<FractalTree3DProps>* root, std::vector<FractalBranch>& branches) -> void
 	{
 		if (!root) return;
 		using TBone = Bone<FractalTree3DProps>;
@@ -108,28 +113,89 @@ int main()
 		root->ForEach(scaleBones);
 
 		float trunkThickness = 1.0f;
-		float branchDepthFactor = 0.9f;
+		float branchScalar = 0.5f;	// how the branch thickness relates to the parent
+		float depthScalar = 0.8f;	// how much the branch shrinks in thickness the farther from the root it goes
+		const int trunkCylinderDivisions = 32;
 		for (int b = 0; b < branches.size(); b++)
 		{
+			int cylinderDivisions = trunkCylinderDivisions / pow(2, branches[b].depth);
+			cylinderDivisions = (cylinderDivisions < 4) ? 6 : cylinderDivisions;
+
+			GLTriangleMesh newBranchMesh{ false };
+
+			// Create vertex rings around each bone
 			auto& branchNodes = branches[b].nodes;
 			for (int depth = 0; depth < branchNodes.size(); depth++)
 			{
 				auto& bone = branchNodes[depth];
-				skeletonLines.AddLine(
-					bone->transform.position,
-					bone->tipPosition(),
-					glm::fvec4(0.0f, 1.0f, 0.0f, 1.0f)
-				);
+				float thickness = powf(branchScalar, float(branches[b].depth)) * powf(depthScalar, float(bone->nodeDepth));
 
-				float thickness = powf(0.5f, branches[b].depth) * powf(0.9f, bone->nodeDepth);
-				skeletonLines.AddLine(
-					bone->transform.position,
-					bone->transform.position + bone->transform.sideDirection*thickness,
-					glm::fvec4(1.0f, 0.0f, 0.0f, 1.0f)
-				);
+				glm::fvec3 localX = bone->transform.sideDirection;
+				glm::fvec3 localY = bone->transform.forwardDirection;
+
+				float angleStep = 360.0f / float(cylinderDivisions);
+				for (int i = 0; i < cylinderDivisions; i++)
+				{
+					float angle = angleStep * i;
+					glm::mat4 rot = glm::rotate(glm::mat4{ 1.0f }, glm::radians(angle), localY);
+					glm::fvec3 normal = rot * glm::fvec4(localX, 0.0f);
+
+					auto& t = bone->transform;
+					newBranchMesh.AddVertex(
+						t.position + normal * thickness,
+						normal,
+						glm::fvec4{ 1.0f }, 
+						glm::fvec4{ 1.0f }
+					);
+				}
 			}
+
+			// Add tip for last bone
+			auto& lastBone = branchNodes.back();
+			newBranchMesh.AddVertex(
+				lastBone->tipPosition(),
+				lastBone->transform.forwardDirection,
+				glm::fvec4{ 1.0f },
+				glm::fvec4{ 1.0f }
+			);
+
+			// Generate indices for cylinders
+			for (int depth = 1; depth < branchNodes.size(); depth++)
+			{
+				int uStart = depth * cylinderDivisions;
+				int lStart = uStart - cylinderDivisions;
+
+				for (int i = 0; i < cylinderDivisions-1; i++)
+				{
+					int u = uStart + i;
+					int l = lStart + i;
+
+					newBranchMesh.DefineNewTriangle(l, l+1, u+1);
+					newBranchMesh.DefineNewTriangle(u+1, u, l);
+				}
+
+				// Close cylinder
+				int uEnd = uStart + cylinderDivisions - 1;
+				int lEnd = lStart + cylinderDivisions - 1;
+				newBranchMesh.DefineNewTriangle(lEnd, lStart, uStart);
+				newBranchMesh.DefineNewTriangle(uStart, uEnd, lEnd);
+			}
+
+			// Generate indices for tip
+			int tipIndex = newBranchMesh.positions.size() - 1;
+			int lastRing = cylinderDivisions*(branchNodes.size() - 1);
+			for (int i = 1; i < cylinderDivisions; i++)
+			{
+				int ringId = lastRing + i;
+				newBranchMesh.DefineNewTriangle(ringId-1, ringId, tipIndex);
+			}
+			// Close tip loop
+			newBranchMesh.DefineNewTriangle(lastRing+cylinderDivisions-1, lastRing, tipIndex);
+
+			branchMeshes.AppendMesh(newBranchMesh);
 		}
 	});
+	branchMeshes.SendToGPU();
 	skeletonLines.SendToGPU();
 
 	/*
@@ -243,9 +309,17 @@ int main()
 		leafShader.Use();
 		leafMesh.Draw();
 
-		lineShader.UpdateMVP(projection);
-		lineShader.Use();
-		skeletonLines.Draw();
+		phongShader.Use();
+		glm::vec3 lightPos = glm::vec3(999999.0f);
+		phongShader.SetUniformVec3("cameraPosition", camera.GetPosition());
+		phongShader.SetUniformVec3("lightPosition", lightPos);
+		phongShader.UpdateMVP(projection);
+
+		//lineShader.UpdateMVP(projection);
+		//lineShader.Use();
+		//skeletonLines.Draw();
+
+		branchMeshes.Draw();
 
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		grid.Draw(projection);

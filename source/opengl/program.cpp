@@ -77,10 +77,8 @@ void GLProgram::CompileAndLink()
 		// These attributes are bound by default
 		glBindAttribLocation(programId, 0, "vertexPosition");
 		glBindAttribLocation(programId, 1, "vertexTCoord");
-		mvpId = glGetUniformLocation(programId, "mvp");
 
-		glm::mat4 identity{ 1.0f };
-		UpdateMVP(identity);
+		ReloadUniforms();
 	}
 }
 
@@ -99,3 +97,86 @@ void GLProgram::UpdateMVP(glm::mat4& mvp)
 	Use();
 	glUniformMatrix4fv(mvpId, 1, GL_FALSE, &mvp[0][0]);
 }
+
+void GLProgram::SetUniformFloat(std::string name, float value)
+{
+	if (floatUniforms.count(name) == 0)
+	{
+		floatUniforms[name] = {
+			glGetUniformLocation(programId, name.c_str()),
+			value
+		};
+		floatUniforms[name].Upload();
+	}
+	else
+	{
+		auto& u = floatUniforms[name];
+		u.value = value;
+		u.Upload();
+	}
+}
+
+void GLProgram::SetUniformVec3(std::string name, glm::fvec3 value)
+{
+	if (vec3Uniforms.count(name) == 0)
+	{
+		vec3Uniforms[name] = {
+			glGetUniformLocation(programId, name.c_str()),
+			value
+		};
+		vec3Uniforms[name].Upload();
+	}
+	else
+	{
+		auto& u = vec3Uniforms[name];
+		u.value = value;
+		u.Upload();
+	}
+}
+
+void GLProgram::SetUniformVec4(std::string name, glm::fvec4 value)
+{
+	if (vec4Uniforms.count(name) == 0)
+	{
+		vec4Uniforms[name] = {
+			glGetUniformLocation(programId, name.c_str()),
+			value
+		};
+		vec4Uniforms[name].Upload();
+	}
+	else
+	{
+		auto& u = vec4Uniforms[name];
+		u.value = value;
+		u.Upload();
+	}
+}
+
+void GLProgram::ReloadUniforms()
+{
+	Use();
+
+	mvpId = glGetUniformLocation(programId, "mvp");
+
+	glm::mat4 identity{ 1.0f };
+	UpdateMVP(identity);
+
+	for (auto& u : floatUniforms)
+	{
+		u.second.id = glGetUniformLocation(programId, u.first.c_str());
+		u.second.Upload();
+	}
+
+	for (auto& u : vec3Uniforms)
+	{
+		u.second.id = glGetUniformLocation(programId, u.first.c_str());
+		u.second.Upload();
+	}
+
+	for (auto& u : vec4Uniforms)
+	{
+		u.second.id = glGetUniformLocation(programId, u.first.c_str());
+		u.second.Upload();
+	}
+}
+

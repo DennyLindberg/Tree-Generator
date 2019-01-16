@@ -2,6 +2,8 @@
 #include "../core/math.h"
 #include "../core/application.h"
 
+// This camera uses a position and a focus point to determine orientation.
+// The getters and setters are used to ensure that the internals update.
 class Camera
 {
 protected:
@@ -21,6 +23,11 @@ public:
 
 	Camera() = default;
 	~Camera() = default;
+
+	glm::fvec3 GetPosition()
+	{
+		return position;
+	}
 
 	void SetPosition(glm::vec3& newPosition)
 	{

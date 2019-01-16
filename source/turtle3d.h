@@ -211,11 +211,9 @@ public:
 		auto yawRot = glm::rotate(identity, glm::radians(yawDegrees), transform.forwardDirection);
 		transform.sideDirection = yawRot * glm::fvec4(transform.sideDirection, 0.0f);
 
-		// Change the up/down angle of the forward direction
+		// Change the up/down angle of the forward direction and side direction
 		glm::fvec3 pitchVector = glm::cross(transform.forwardDirection, transform.sideDirection);
-		auto pitchRot = glm::rotate(identity, glm::radians(pitchDegrees), pitchVector);
-		transform.forwardDirection = pitchRot * glm::fvec4(transform.forwardDirection, 0.0f);
-		transform.sideDirection = pitchRot * glm::fvec4(transform.sideDirection, 0.0f);
+		Rotate(pitchDegrees, pitchVector);
 	}
 
 	void Rotate(float degrees, glm::fvec3 rotateVector)

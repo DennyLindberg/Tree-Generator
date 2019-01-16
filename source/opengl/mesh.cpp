@@ -41,8 +41,11 @@ GLMeshInterface::~GLMeshInterface()
 
 
 
-GLTriangleMesh::GLTriangleMesh()
+GLTriangleMesh::GLTriangleMesh(bool allocate)
 {
+	allocated = allocate;
+	if (!allocated) return;
+
 	glBindVertexArray(vao);
 
 	glGenBuffers(1, &positionBuffer);
@@ -77,6 +80,8 @@ GLTriangleMesh::GLTriangleMesh()
 
 GLTriangleMesh::~GLTriangleMesh()
 {
+	if (!allocated) return;
+
 	glDeleteBuffers(1, &positionBuffer);
 	glDeleteBuffers(1, &normalBuffer);
 	glDeleteBuffers(1, &colorBuffer);
@@ -103,6 +108,8 @@ void GLTriangleMesh::Clear()
 
 void GLTriangleMesh::SendToGPU()
 {
+	if (!allocated) return;
+
 	glBindVertexArray(vao);
 	glBindBuffer(GL_ARRAY_BUFFER, positionBuffer);
 	glBufferVector(GL_ARRAY_BUFFER, positions, GL_STATIC_DRAW);
@@ -122,7 +129,7 @@ void GLTriangleMesh::SendToGPU()
 
 void GLTriangleMesh::Draw()
 {
-	if (positions.size() > 0 && indices.size() > 0)
+	if (allocated && positions.size() > 0 && indices.size() > 0)
 	{
 		glBindVertexArray(vao);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
@@ -151,6 +158,31 @@ void GLTriangleMesh::DefineNewTriangle(unsigned int index1, unsigned int index2,
 	indices.push_back(index1);
 	indices.push_back(index2);
 	indices.push_back(index3);
+}
+
+void GLTriangleMesh::AppendMesh(GLTriangleMesh& other)
+{
+	// These two values are used to re-calculate the indices of the other mesh
+	// after it has been appended.
+	int newIndicesOffset = positions.size();
+	int newIndicesStart = indices.size();
+
+	positions.reserve(positions.size() + other.positions.size());
+	normals.reserve(normals.size() + other.normals.size());
+	colors.reserve(colors.size() + other.colors.size());
+	texCoords.reserve(texCoords.size() + other.texCoords.size());
+	indices.reserve(indices.size() + other.indices.size());
+
+	positions.insert(positions.end(), other.positions.begin(), other.positions.end());
+	normals.insert(normals.end(), other.normals.begin(), other.normals.end());
+	colors.insert(colors.end(), other.colors.begin(), other.colors.end());
+	texCoords.insert(texCoords.end(), other.texCoords.begin(), other.texCoords.end());
+	indices.insert(indices.end(), other.indices.begin(), other.indices.end());
+
+	for (int i = newIndicesStart; i < indices.size(); ++i)
+	{
+		indices[i] += newIndicesOffset;
+	}
 }
 
 
