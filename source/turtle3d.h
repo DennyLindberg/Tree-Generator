@@ -138,6 +138,8 @@ public:
 	TurtleBone* activeBone = nullptr;
 	TurtleBone* rootBone = nullptr;
 
+	int boneCount = 0;
+
 	Turtle3D()
 	{
 		Clear();
@@ -148,6 +150,7 @@ public:
 	void Clear()
 	{
 		transform.Clear();
+		boneCount = 0;
 		if (rootBone)
 		{
 			delete rootBone;
@@ -239,6 +242,7 @@ public:
 		}
 		activeBone->transform = transform;
 		activeBone->length = length;
+		boneCount++;
 	}
 
 	void ForEachBone(std::function<void(TurtleBone*)> callback)

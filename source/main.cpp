@@ -44,44 +44,8 @@ static const float WINDOW_RATIO = WINDOW_WIDTH / float(WINDOW_HEIGHT);
 
 namespace fs = std::filesystem;
 
-using BranchVector = std::vector<std::vector<Bone<FractalTree3DProps>*>>;
-void BuildBranches(BranchVector& branches, Bone<FractalTree3DProps>* bone)
-{
-	using TBone = Bone<FractalTree3DProps>;
-	using BoneVector = std::vector<TBone*>;
 
-	branches.clear();
-	branches.shrink_to_fit();
-	branches.push_back({ bone });
 
-	int activeIndex = 0;
-	while (activeIndex < branches.size())
-	{
-		BoneVector& currentBranch = branches[activeIndex];
-		TBone* firstBone = currentBranch[0];
-
-		BoneVector potentials{ firstBone };
-		TBone* lastChild = firstBone->lastChild;
-		while (lastChild)
-		{
-			currentBranch.push_back(lastChild);
-			potentials.push_back({ lastChild });
-			lastChild = lastChild->lastChild;
-		}
-
-		for (TBone* p : potentials)
-		{
-			TBone* sibling = p->previousSibling;
-			while (sibling)
-			{
-				branches.push_back({ sibling });
-				sibling = sibling->previousSibling;
-			}
-		}
-
-		activeIndex++;
-	}
-}
 
 /*
 	Application
@@ -130,8 +94,10 @@ int main()
 	Turtle3D turtle;
 	GLLine skeletonLines;
 	GenerateFractalTree3D(uniformGenerator, 10,
-		[&skeletonLines](Bone<FractalTree3DProps>* bone) -> void
+		[&skeletonLines](Bone<FractalTree3DProps>* root, std::vector<FractalBranch>& branches) -> void
 	{
+		if (!root) return;
+
 		using TBone = Bone<FractalTree3DProps>;
 
 		std::function<void(TBone*)> scaleBones = [](TBone* bone) -> void
@@ -140,26 +106,30 @@ int main()
 			bone->transform.position *= scale;
 			bone->length *= scale;
 		};
-		bone->ForEach(scaleBones);
+		root->ForEach(scaleBones);
 
-		BranchVector branches;
-		BuildBranches(branches, bone);
-
-		// TODO: Replace AddLine calls and build mesh instead
-		for (int i = 0; i < branches.size(); ++i)
+		for (int b = 0; b < branches.size(); b++)
 		{
-			auto& branch = branches[i];
-			for (TBone* b : branch)
+			float red = float(b % 5 == 0) + float(b % 5 == 3);
+			float green = float(b % 5 == 1) + float(b % 5 == 4);
+			float blue = float(b % 5 == 2) + float(b % 5 == 3) + float(b % 5 == 4);
+
+			auto& branchNodes = branches[b].nodes;
+			for (int depth = 0; depth < branchNodes.size(); depth++)
 			{
+				float alpha = 1.0f - float(depth) / float(branchNodes.size());
+				alpha *= float(!branches[b].IsLeaf()); // make leaf nodes black
+
+				auto& bone = branchNodes[depth];
 				skeletonLines.AddLine(
-					b->transform.position,
-					b->tipPosition(),
-					glm::fvec4(0.0f, 1.0f, 0.0f, 1.0f)
+					bone->transform.position,
+					bone->tipPosition(),
+					glm::fvec4(red, green, blue, 1.0f) * alpha
 				);
 
 				skeletonLines.AddLine(
-					b->transform.position,
-					b->transform.position + b->transform.sideDirection*b->transform.properties.thickness,
+					bone->transform.position,
+					bone->transform.position + bone->transform.sideDirection*bone->transform.properties.thickness,
 					glm::fvec4(1.0f, 0.0f, 0.0f, 1.0f)
 				);
 			}

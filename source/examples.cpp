@@ -307,8 +307,53 @@ void DrawFractalLeaf(std::vector<glm::fvec3>& generatedHull, Canvas2D& canvas, C
 
 
 
+void BuildBranchesForFractalTree3D(std::vector<FractalBranch>& branches, Bone<FractalTree3DProps>* bone)
+{
+	/*
+		A lastChild is considered a continuation of the same branch for the FractalTree3D. 
+		If there is more than one child in a node, it means there is a new branch. 
+		This method traverses the nodes and builds branches for each lastChild chain.
+	*/
+	using TBone = Bone<FractalTree3DProps>;
+	using BoneVector = std::vector<TBone*>;
 
-void GenerateFractalTree3D(UniformRandomGenerator& uniformGenerator, int iterations, std::function<void(Bone<FractalTree3DProps>*)> forEachBoneCallback)
+	branches.clear();
+	branches.shrink_to_fit();
+	branches.push_back(FractalBranch{ bone });
+
+	int activeIndex = 0;
+	while (activeIndex < branches.size())
+	{
+		FractalBranch& currentBranch = branches[activeIndex];
+		TBone* firstBone = currentBranch.nodes[0];
+
+		// Build branch from chain of lastChild's
+		BoneVector potentialBranchingPoints{};
+		TBone* lastChild = firstBone->lastChild;
+		while (lastChild)
+		{
+			currentBranch.Push(lastChild);
+			potentialBranchingPoints.push_back(lastChild);
+			lastChild = lastChild->lastChild;
+		}
+
+		// For each previous lastChild, check if there are siblings.
+		// Whenever there is a sibling, it is a new branch.
+		for (TBone* p : potentialBranchingPoints)
+		{
+			TBone* sibling = p->previousSibling;
+			while (sibling)
+			{
+				branches.push_back(FractalBranch{ sibling });
+				sibling = sibling->previousSibling;
+			}
+		}
+
+		activeIndex++;
+	}
+}
+
+void GenerateFractalTree3D(UniformRandomGenerator& uniformGenerator, int iterations, std::function<void(Bone<FractalTree3DProps>*, std::vector<FractalBranch>&)> onResultCallback)
 {
 	// https://lazynezumi.com/lsystems
 	LSystemString fractalTree;
@@ -326,7 +371,7 @@ void GenerateFractalTree3D(UniformRandomGenerator& uniformGenerator, int iterati
 			uniformGenerator.RandomFloat(0.0f, 45.0f),
 			uniformGenerator.RandomFloat(-10.0f, 10.0f)
 		);
-		p.branchDepth++;
+		p.depth++;
 		p.thickness *= 0.75;
 
 		float randomLengthFactor = 1.0f + uniformGenerator.RandomFloat(0.0f, 0.5f);
@@ -344,7 +389,7 @@ void GenerateFractalTree3D(UniformRandomGenerator& uniformGenerator, int iterati
 
 	turtle.actions['+'] = [&uniformGenerator, &iterations](Turtle& t, int repetitions)
 	{
-		float depth = float(t.transform.properties.branchDepth);
+		float depth = float(t.transform.properties.depth);
 
 		float yawRandOffset = uniformGenerator.RandomFloat(-5.0f, 5.0f);
 		float yawBranchOffset = 45.0f*depth + uniformGenerator.RandomFloat(-25.0f, -25.0f);
@@ -362,5 +407,9 @@ void GenerateFractalTree3D(UniformRandomGenerator& uniformGenerator, int iterati
 	};
 
 	turtle.GenerateSkeleton(fractalTree.RunProduction(iterations));
-	forEachBoneCallback(turtle.rootBone);
+
+	std::vector<FractalBranch> branches;
+	BuildBranchesForFractalTree3D(branches, turtle.rootBone);
+
+	onResultCallback(turtle.rootBone, branches);
 }
