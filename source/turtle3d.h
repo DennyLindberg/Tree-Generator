@@ -34,6 +34,7 @@ struct Bone
 
 	TurtleTransform<OptionalState> transform;
 	float length = 0.0f;
+	int nodeDepth = 1; // distance from root bone in the node tree
 
 	Bone() = default;
 	~Bone()
@@ -82,6 +83,7 @@ struct Bone
 
 		newChild->parent = this;
 		newChild->transform.position = this->tipPosition();
+		newChild->nodeDepth = this->nodeDepth + 1;
 
 		return newChild;
 	}
@@ -93,7 +95,7 @@ struct Bone
 			printf("  ");
 		}
 
-		printf("x\n");
+		printf("%d\n", nodeDepth);
 
 		if (firstChild)
 		{

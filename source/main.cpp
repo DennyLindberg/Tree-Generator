@@ -97,7 +97,6 @@ int main()
 		[&skeletonLines](Bone<FractalTree3DProps>* root, std::vector<FractalBranch>& branches) -> void
 	{
 		if (!root) return;
-
 		using TBone = Bone<FractalTree3DProps>;
 
 		std::function<void(TBone*)> scaleBones = [](TBone* bone) -> void
@@ -108,28 +107,24 @@ int main()
 		};
 		root->ForEach(scaleBones);
 
+		float trunkThickness = 1.0f;
+		float branchDepthFactor = 0.9f;
 		for (int b = 0; b < branches.size(); b++)
 		{
-			float red = float(b % 5 == 0) + float(b % 5 == 3);
-			float green = float(b % 5 == 1) + float(b % 5 == 4);
-			float blue = float(b % 5 == 2) + float(b % 5 == 3) + float(b % 5 == 4);
-
 			auto& branchNodes = branches[b].nodes;
 			for (int depth = 0; depth < branchNodes.size(); depth++)
 			{
-				float alpha = 1.0f - float(depth) / float(branchNodes.size());
-				alpha *= float(!branches[b].IsLeaf()); // make leaf nodes black
-
 				auto& bone = branchNodes[depth];
 				skeletonLines.AddLine(
 					bone->transform.position,
 					bone->tipPosition(),
-					glm::fvec4(red, green, blue, 1.0f) * alpha
+					glm::fvec4(0.0f, 1.0f, 0.0f, 1.0f)
 				);
 
+				float thickness = powf(0.5f, branches[b].depth) * powf(0.9f, bone->nodeDepth);
 				skeletonLines.AddLine(
 					bone->transform.position,
-					bone->transform.position + bone->transform.sideDirection*bone->transform.properties.thickness,
+					bone->transform.position + bone->transform.sideDirection*thickness,
 					glm::fvec4(1.0f, 0.0f, 0.0f, 1.0f)
 				);
 			}

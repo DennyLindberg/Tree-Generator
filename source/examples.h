@@ -68,18 +68,18 @@ void GenerateFractalPlant3D(Turtle3D<T>& turtle, UniformRandomGenerator& uniform
 
 struct FractalTree3DProps
 {
-	int depth = 0;				// How far the node is from the root
-	float lengthFactor = 1.0f;
-	float thickness = 1.0f;
+	float lengthFactor = 1.0f;	// How much the bone should grow
 };
 
 struct FractalBranch
 {
 	using TBone = Bone<FractalTree3DProps>;
 
+	int depth = 1;
 	std::vector<TBone*> nodes;
 
-	FractalBranch(TBone* root)
+	FractalBranch(TBone* root, int rootDepth)
+		: depth{ rootDepth }
 	{
 		Push(root);
 	}

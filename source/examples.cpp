@@ -319,20 +319,19 @@ void BuildBranchesForFractalTree3D(std::vector<FractalBranch>& branches, Bone<Fr
 
 	branches.clear();
 	branches.shrink_to_fit();
-	branches.push_back(FractalBranch{ bone });
+	branches.push_back(FractalBranch{ bone, 1 });
 
 	int activeIndex = 0;
 	while (activeIndex < branches.size())
 	{
-		FractalBranch& currentBranch = branches[activeIndex];
-		TBone* firstBone = currentBranch.nodes[0];
+		TBone* firstBone = branches[activeIndex].nodes[0];
 
 		// Build branch from chain of lastChild's
 		BoneVector potentialBranchingPoints{};
 		TBone* lastChild = firstBone->lastChild;
 		while (lastChild)
 		{
-			currentBranch.Push(lastChild);
+			branches[activeIndex].Push(lastChild);
 			potentialBranchingPoints.push_back(lastChild);
 			lastChild = lastChild->lastChild;
 		}
@@ -344,7 +343,7 @@ void BuildBranchesForFractalTree3D(std::vector<FractalBranch>& branches, Bone<Fr
 			TBone* sibling = p->previousSibling;
 			while (sibling)
 			{
-				branches.push_back(FractalBranch{ sibling });
+				branches.push_back(FractalBranch{ sibling, branches[activeIndex].depth + 1});
 				sibling = sibling->previousSibling;
 			}
 		}
@@ -371,8 +370,6 @@ void GenerateFractalTree3D(UniformRandomGenerator& uniformGenerator, int iterati
 			uniformGenerator.RandomFloat(0.0f, 45.0f),
 			uniformGenerator.RandomFloat(-10.0f, 10.0f)
 		);
-		p.depth++;
-		p.thickness *= 0.75;
 
 		float randomLengthFactor = 1.0f + uniformGenerator.RandomFloat(0.0f, 0.5f);
 		t.MoveForward(p.lengthFactor * randomLengthFactor);
@@ -383,13 +380,12 @@ void GenerateFractalTree3D(UniformRandomGenerator& uniformGenerator, int iterati
 	turtle.actions['['] = [&uniformGenerator](Turtle& t, int repetitions)
 	{
 		t.PushState();
-		t.transform.properties.thickness *= 0.75f;
 	};
 	turtle.actions[']'] = [](Turtle& t, int repetitions) { t.PopState(); };
 
 	turtle.actions['+'] = [&uniformGenerator, &iterations](Turtle& t, int repetitions)
 	{
-		float depth = float(t.transform.properties.depth);
+		float depth = float(t.activeBone->nodeDepth);
 
 		float yawRandOffset = uniformGenerator.RandomFloat(-5.0f, 5.0f);
 		float yawBranchOffset = 45.0f*depth + uniformGenerator.RandomFloat(-25.0f, -25.0f);
