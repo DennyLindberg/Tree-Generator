@@ -24,12 +24,9 @@ void main()
     vec3 ambientLight = cameraContrib * vec3(0.2);
 
     // Ordinary phong diffuse model with fake SSS
-    float angleContribution = dot(normal, lightDir);
-    float directLightDot = clamp(angleContribution, 0.0, 1.0);
-    float sssLightDot = abs(angleContribution);
-    float directLightContribution = mix(directLightDot, 0.75 + sssLightDot/4.0, sssBacksideAmount);
+    float directLightDot = clamp(dot(normal, lightDir), 0.0, 1.0);
     float lightStrength = lightColor.a;
-    vec3 diffuseLight = lightStrength * directLightContribution * lightColor.rgb;
+    vec3 diffuseLight = lightStrength * directLightDot * lightColor.rgb;
 
     // Specular not yet implemented
     vec3 specularLight = vec3(0.0);

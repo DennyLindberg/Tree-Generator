@@ -340,6 +340,7 @@ int main()
 
 	phongShader.Use();
 	phongShader.SetUniformVec4("lightColor", glm::fvec4{ 1.0f, 1.0f, 1.0f, 1.0f });
+	leafShader.Use();
 	leafShader.SetUniformVec4("lightColor", glm::fvec4{ 1.0f, 1.0f, 1.0f, 1.0f });
 
 	/*
@@ -475,37 +476,29 @@ int main()
 		}
 
 		window.Clear();
+
 		glPolygonMode(GL_FRONT_AND_BACK, (renderWireframe? GL_LINE : GL_FILL));
 
-		//branchMeshes.transform.scale = glm::vec3(0.5f);
 		glm::vec3 lightPos = glm::vec3(999999.0f);
 		glm::mat4 projection = camera.ViewProjectionMatrix();
 		glm::mat4 mvp = projection * branchMeshes.transform.ModelMatrix();
 
+		// Leaves
 		leafTexture->UseForDrawing();
 		leafShader.Use();
 		leafShader.SetUniformFloat("sssBacksideAmount", 0.75f);
 		leafShader.SetUniformVec3("cameraPosition", camera.GetPosition());
 		leafShader.SetUniformVec3("lightPosition", lightPos);
 		leafShader.UpdateMVP(mvp);
-		leafTexture->UseForDrawing();
 		crownLeavesMeshes.Draw();
 
-
-
 		// Tree branches
+		treeBarkTexture.UseForDrawing();
 		phongShader.Use();
-		phongShader.SetUniformFloat("sssBacksideAmount", 0.0f);
 		phongShader.SetUniformVec3("cameraPosition", camera.GetPosition());
 		phongShader.SetUniformVec3("lightPosition", lightPos);
 		phongShader.UpdateMVP(mvp);
-		treeBarkTexture.UseForDrawing();
 		branchMeshes.Draw();
-
-
-		lineShader.UpdateMVP(projection);
-		lineShader.Use();
-		//skeletonLines.Draw();
 
 
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -516,6 +509,7 @@ int main()
 		lineShader.Use();
 		coordinateReferenceLines.Draw();
 		leafCanvas.RenderToScreen();
+
 		window.SwapFramebuffer();
 	}
 
