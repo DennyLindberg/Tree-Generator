@@ -69,8 +69,6 @@ void GenerateNewTree(GLLine& skeletonLines, GLTriangleMesh& branchMeshes, GLTria
 	int leavesPerBranch = 25 - int(20 * (growthCurve * 2.0f - 1.0f));
 	leavesPerBranch = (leavesPerBranch == 0) ? 1 : leavesPerBranch;
 	
-	
-	printf("\r\nIterations: %d, LeavesPerBranch: %d, Pruning: %.2f", treeIterations, leavesPerBranch, pruningChance);
 
 
 	/*
@@ -292,6 +290,8 @@ void GenerateNewTree(GLLine& skeletonLines, GLTriangleMesh& branchMeshes, GLTria
 	branchMeshes.SendToGPU();
 	crownLeavesMeshes.SendToGPU();
 	skeletonLines.SendToGPU();
+
+	printf("\r\n\tDone! LeavesPerBranch: %d, Pruning: %.2f\r\n", leavesPerBranch, pruningChance);
 }
 
 
@@ -396,9 +396,9 @@ int main()
 	*/
 	GLLine skeletonLines, coordinateReferenceLines;
 	GLTriangleMesh branchMeshes, crownLeavesMeshes;
-	auto GenerateRandomTree = [&](int iterations = 5) {
-		printf("\r\nGenerating");
-		GenerateNewTree(skeletonLines, branchMeshes, crownLeavesMeshes, leafMesh, uniformGenerator, iterations, 3);
+	auto GenerateRandomTree = [&](int iterations = 5, int subdivisions = 3) {
+		printf("\r\nGenerating for %d iterations and %d subdivisions", iterations);
+		GenerateNewTree(skeletonLines, branchMeshes, crownLeavesMeshes, leafMesh, uniformGenerator, iterations, subdivisions);
 	};
 	GenerateRandomTree();
 
@@ -421,6 +421,7 @@ int main()
 	bool captureMouse = false;
 	bool renderWireframe = false;
 	int treeIterations = 5;
+	int treeSubdivisions = 3;
 	while (!quit)
 	{
 		clock.Tick();
@@ -446,11 +447,11 @@ int main()
 				else if (key == SDLK_5) renderWireframe = false;
 				else if (key == SDLK_s) TakeScreenshot("screenshot.png", WINDOW_WIDTH, WINDOW_HEIGHT);
 				else if (key == SDLK_f) turntable.SnapToOrigin();
-				else if (key == SDLK_g) GenerateRandomTree(treeIterations);
-				else if (key == SDLK_UP) { GenerateRandomTree(++treeIterations);}
-				else if (key == SDLK_DOWN) { treeIterations = (treeIterations <= 1) ? 1 : treeIterations - 1; GenerateRandomTree(treeIterations); }
-
-				;
+				else if (key == SDLK_g) GenerateRandomTree(treeIterations, treeSubdivisions);
+				else if (key == SDLK_UP) { GenerateRandomTree(++treeIterations, treeSubdivisions);}
+				else if (key == SDLK_DOWN) { treeIterations = (treeIterations <= 1) ? 1 : treeIterations - 1; GenerateRandomTree(treeIterations, treeSubdivisions); }
+				else if (key == SDLK_LEFT) { treeSubdivisions = (treeSubdivisions <= 1) ? 1 : treeSubdivisions - 1; GenerateRandomTree(treeIterations, treeSubdivisions); }
+				else if (key == SDLK_RIGHT) { GenerateRandomTree(treeIterations, ++treeSubdivisions); }
 			}
 			else if (event.type == SDL_MOUSEBUTTONDOWN)
 			{
