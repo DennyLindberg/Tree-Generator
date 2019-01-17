@@ -232,7 +232,7 @@ void GenerateNewTree(GLLine& skeletonLines, GLTriangleMesh& branchMeshes, GLTria
 			if (branch.depth < startDepth) continue;
 
 			auto& branchNodes = branch.nodes;
-			int lastIndex = branchNodes.size() - 1;
+			int lastIndex = int(branchNodes.size() - 1);
 			int startIndex = int(round(0.25f * lastIndex));
 			for (int i = startIndex; i <= lastIndex; ++i)
 			{
@@ -334,7 +334,7 @@ int main()
 	ShaderManager shaderManager;
 	shaderManager.InitializeFolder(contentFolder);
 	shaderManager.LoadLiveShader(defaultShader, L"basic_vertex.glsl", L"basic_fragment.glsl");
-	shaderManager.LoadLiveShader(leafShader, L"basic_vertex.glsl", L"leaf_fragment.glsl");
+	shaderManager.LoadLiveShader(leafShader, L"leaf_vertex.glsl", L"leaf_fragment.glsl");
 	shaderManager.LoadLiveShader(phongShader, L"phong_vertex.glsl", L"phong_fragment.glsl");
 	shaderManager.LoadShader(lineShader, L"line_vertex.glsl", L"line_fragment.glsl");
 
@@ -397,7 +397,7 @@ int main()
 	GLLine skeletonLines, coordinateReferenceLines;
 	GLTriangleMesh branchMeshes, crownLeavesMeshes;
 	auto GenerateRandomTree = [&](int iterations = 5, int subdivisions = 3) {
-		printf("\r\nGenerating for %d iterations and %d subdivisions", iterations);
+		printf("\r\nGenerating for %d iterations and %d subdivisions", iterations, subdivisions);
 		GenerateNewTree(skeletonLines, branchMeshes, crownLeavesMeshes, leafMesh, uniformGenerator, iterations, subdivisions);
 	};
 	GenerateRandomTree();
@@ -488,6 +488,7 @@ int main()
 		leafTexture->UseForDrawing();
 		leafShader.Use();
 		leafShader.SetUniformFloat("sssBacksideAmount", 0.75f);
+		leafShader.SetUniformFloat("time", float(clock.time));
 		leafShader.SetUniformVec3("cameraPosition", camera.GetPosition());
 		leafShader.SetUniformVec3("lightPosition", lightPos);
 		leafShader.UpdateMVP(mvp);
