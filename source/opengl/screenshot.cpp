@@ -63,10 +63,10 @@ void TakeScreenshot(std::string filename, unsigned int windowWidth, unsigned int
 	unsigned error = lodepng::encode(filename, flippedData, windowWidth, windowHeight);
 	if (error)
 	{
-		std::cout << "encoder error " << error << ": " << lodepng_error_text(error) << std::endl;
+		std::cout << "\r\nencoder error " << error << ": " << lodepng_error_text(error) << std::endl;
 	}
 	else
 	{
-		std::cout << "Screenshot saved to " + filename + "\r\n";
+		std::cout << "\r\nScreenshot saved to " + filename + "\r\n";
 	}
 }

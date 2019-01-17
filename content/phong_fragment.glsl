@@ -32,5 +32,5 @@ void main()
 
     vec4 totalLightContribution = vec4(ambientLight + diffuseLight + specularLight, 1.0);
 
-    color = totalLightContribution ;//* texture(textureSampler, vTCoord.rg);
+    color = totalLightContribution * texture(textureSampler, vTCoord.rg);
 }

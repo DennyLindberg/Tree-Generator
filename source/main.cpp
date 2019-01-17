@@ -58,14 +58,6 @@ void GenerateNewTree(GLLine& skeletonLines, GLTriangleMesh& branchMeshes, Unifor
 		if (!root) return;
 		using TBone = Bone<FractalTree3DProps>;
 
-		std::function<void(TBone*)> scaleBones = [](TBone* bone) -> void
-		{
-			float scale = 1.0f;
-			bone->transform.position *= scale;
-			bone->length *= scale;
-		};
-		root->ForEach(scaleBones);
-
 		float trunkThickness = 0.25f * powf(1.2f, float(treeIterations));
 		float branchScalar = 0.6f;										// how the branch thickness relates to the parent
 		float depthScalar = powf(0.7f, 1.0f / float(treeSubdivisions));	// how much the branch shrinks in thickness the farther from the root it goes (the pow is to counter the subdiv growth)
@@ -77,12 +69,20 @@ void GenerateNewTree(GLLine& skeletonLines, GLTriangleMesh& branchMeshes, Unifor
 
 			GLTriangleMesh newBranchMesh{ false };
 
+			/*
+				Vertex 
+				Positions, Normals, Texture Coordinates
+			*/
 			// Create vertex rings around each bone
 			auto& branchNodes = branches[b].nodes;
+			float rootLength = branchNodes[0]->length;
+			float texU = 0.0f; // Texture coordinate along branch, it varies depending on the bone length and must be tracked
 			for (int depth = 0; depth < branchNodes.size(); depth++)
 			{
 				auto& bone = branchNodes[depth];
 				float thickness = trunkThickness * powf(branchScalar, float(branches[b].depth)) * powf(depthScalar, float(bone->nodeDepth));
+				float circumference = 2.0f*PI_f*thickness;
+				texU += bone->length / circumference;
 
 				glm::fvec3 localX = bone->transform.sideDirection;
 				glm::fvec3 localY = bone->transform.forwardDirection;
@@ -99,27 +99,42 @@ void GenerateNewTree(GLLine& skeletonLines, GLTriangleMesh& branchMeshes, Unifor
 						t.position + normal * thickness,
 						normal,
 						glm::fvec4{ 1.0f },
-						glm::fvec4{ 1.0f }
+						glm::fvec4{ texU, i/float(cylinderDivisions), 1.0f, 1.0f }
 					);
 				}
+
+				// Add extra set of vertices for the UV seam
+				auto& t = bone->transform;
+				newBranchMesh.AddVertex(
+					t.position + localX * thickness,
+					localX,
+					glm::fvec4{ 1.0f },
+					glm::fvec4{ texU, 1.0f, 1.0f, 1.0f }
+				);
 			}
 
-			// Add tip for last bone
+			// Add tip for branch
 			auto& lastBone = branchNodes.back();
 			newBranchMesh.AddVertex(
 				lastBone->tipPosition(),
 				lastBone->transform.forwardDirection,
 				glm::fvec4{ 1.0f },
-				glm::fvec4{ 1.0f }
+				glm::fvec4{ texU+lastBone->length, 0.5f, 1.0f, 1.0f }
 			);
 
+
+
+			/*
+				Triangle Indices
+			*/
 			// Generate indices for cylinders
+			int ringStep = cylinderDivisions + 1; // +1 because of UV seam
 			for (int depth = 1; depth < branchNodes.size(); depth++)
 			{
-				int uStart = depth * cylinderDivisions;
-				int lStart = uStart - cylinderDivisions;
+				int uStart = depth * ringStep;
+				int lStart = uStart - ringStep;
 
-				for (int i = 0; i < cylinderDivisions - 1; i++)
+				for (int i = 0; i < cylinderDivisions; i++)
 				{
 					int u = uStart + i;
 					int l = lStart + i;
@@ -127,24 +142,16 @@ void GenerateNewTree(GLLine& skeletonLines, GLTriangleMesh& branchMeshes, Unifor
 					newBranchMesh.DefineNewTriangle(l, l + 1, u + 1);
 					newBranchMesh.DefineNewTriangle(u + 1, u, l);
 				}
-
-				// Close cylinder
-				int uEnd = uStart + cylinderDivisions - 1;
-				int lEnd = lStart + cylinderDivisions - 1;
-				newBranchMesh.DefineNewTriangle(lEnd, lStart, uStart);
-				newBranchMesh.DefineNewTriangle(uStart, uEnd, lEnd);
 			}
 
 			// Generate indices for tip
 			int tipIndex = int(newBranchMesh.positions.size()) - 1;
-			int lastRing = cylinderDivisions * (int(branchNodes.size()) - 1);
-			for (int i = 1; i < cylinderDivisions; i++)
+			int lastRing = ringStep * (int(branchNodes.size()) - 1);
+			for (int i = 1; i < ringStep; i++)
 			{
 				int ringId = lastRing + i;
 				newBranchMesh.DefineNewTriangle(ringId - 1, ringId, tipIndex);
 			}
-			// Close tip loop
-			newBranchMesh.DefineNewTriangle(lastRing + cylinderDivisions - 1, lastRing, tipIndex);
 
 			branchMeshes.AppendMesh(newBranchMesh);
 		}
@@ -183,6 +190,7 @@ int main()
 	turntable.Set(-45.0f, 25.0f, 7.0f);
 
 	GLTexture defaultTexture{contentFolder / "default.png"};
+	GLTexture treeBarkTexture{contentFolder / "opengameart_org_bark-1024-colcor.png"};
 	defaultTexture.UseForDrawing();
 
 	GLGrid grid;
@@ -324,17 +332,22 @@ int main()
 		leafShader.Use();
 		leafMesh.Draw();
 
+
+		// Tree branches
+		branchMeshes.transform.scale = glm::vec3(0.5f);
+
 		phongShader.Use();
 		glm::vec3 lightPos = glm::vec3(999999.0f);
 		phongShader.SetUniformVec3("cameraPosition", camera.GetPosition());
 		phongShader.SetUniformVec3("lightPosition", lightPos);
-		phongShader.UpdateMVP(projection);
+		phongShader.UpdateMVP(projection * branchMeshes.transform.ModelMatrix());
+		treeBarkTexture.UseForDrawing();
+		branchMeshes.Draw();
 
 		//lineShader.UpdateMVP(projection);
 		//lineShader.Use();
 		//skeletonLines.Draw();
 
-		branchMeshes.Draw();
 
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		grid.Draw(projection);
