@@ -58,9 +58,9 @@ void GenerateNewTree(GLLine& skeletonLines, GLTriangleMesh& branchMeshes, Unifor
 		if (!root) return;
 		using TBone = Bone<FractalTree3DProps>;
 
-		float trunkThickness = 0.25f * powf(1.2f, float(treeIterations));
+		float trunkThickness = 0.2f * powf(1.2f, float(treeIterations));
 		float branchScalar = 0.6f;										// how the branch thickness relates to the parent
-		float depthScalar = powf(0.7f, 1.0f / float(treeSubdivisions));	// how much the branch shrinks in thickness the farther from the root it goes (the pow is to counter the subdiv growth)
+		float depthScalar = powf(0.6f, 1.0f / float(treeSubdivisions));	// how much the branch shrinks in thickness the farther from the root it goes (the pow is to counter the subdiv growth)
 		const int trunkCylinderDivisions = 32;
 		for (int b = 0; b < branches.size(); b++)
 		{
@@ -87,6 +87,33 @@ void GenerateNewTree(GLLine& skeletonLines, GLTriangleMesh& branchMeshes, Unifor
 				glm::fvec3 localX = bone->transform.sideDirection;
 				glm::fvec3 localY = bone->transform.forwardDirection;
 
+				// Make the branch root blend into its parent a bit. (this makes the branches appear less angular)
+				auto& t = bone->transform;
+				glm::fvec3 position = t.position;
+				if (depth < (treeSubdivisions-1) && branchNodes[0]->parent)
+				{
+					auto& parent = branchNodes[0]->parent;
+					float blendAlpha = depth / float(treeSubdivisions);
+
+					glm::fvec3 u = parent->transform.forwardDirection;
+					glm::fvec3 v = bone->transform.position - parent->transform.position;
+					float length = glm::length(v);
+					v /= length;
+					glm::fvec3 projectionOnParent = parent->transform.position + glm::dot(u, v) * u * length * blendAlpha;
+
+					position = glm::mix(projectionOnParent, t.position, 0.5f + 0.5f*blendAlpha);
+					thickness = glm::mix(thickness/branchScalar, thickness, 0.4f + 0.6f*blendAlpha);
+
+					// Blend orientation of cylinder ring to give a spline
+					auto& parentForward = parent->transform.forwardDirection;
+					auto& boneForward = bone->transform.forwardDirection;
+					localY = glm::normalize(glm::mix(parentForward, boneForward, blendAlpha));
+					glm::fvec3 rotationVector = glm::normalize(glm::cross(boneForward, localY));
+					float angle = glm::acos(glm::dot(boneForward, localY));
+					localX = glm::rotate(glm::mat4(1.0f), angle, rotationVector) * glm::fvec4(localX, 0.0f);
+				}
+
+				// Generate the cylinder ring
 				float angleStep = 360.0f / float(cylinderDivisions);
 				for (int i = 0; i < cylinderDivisions; i++)
 				{
@@ -94,9 +121,8 @@ void GenerateNewTree(GLLine& skeletonLines, GLTriangleMesh& branchMeshes, Unifor
 					glm::mat4 rot = glm::rotate(glm::mat4{ 1.0f }, glm::radians(angle), localY);
 					glm::fvec3 normal = rot * glm::fvec4(localX, 0.0f);
 
-					auto& t = bone->transform;
 					newBranchMesh.AddVertex(
-						t.position + normal * thickness,
+						position + normal * thickness,
 						normal,
 						glm::fvec4{ 1.0f },
 						glm::fvec4{ texU, i/float(cylinderDivisions), 1.0f, 1.0f }
@@ -104,9 +130,8 @@ void GenerateNewTree(GLLine& skeletonLines, GLTriangleMesh& branchMeshes, Unifor
 				}
 
 				// Add extra set of vertices for the UV seam
-				auto& t = bone->transform;
 				newBranchMesh.AddVertex(
-					t.position + localX * thickness,
+					position + localX * thickness,
 					localX,
 					glm::fvec4{ 1.0f },
 					glm::fvec4{ texU, 1.0f, 1.0f, 1.0f }
