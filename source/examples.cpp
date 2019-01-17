@@ -372,7 +372,7 @@ void GenerateFractalTree3D(UniformRandomGenerator& uniformGenerator, int iterati
 		float randomLengthFactor = 1.0f + uniformGenerator.RandomFloat(0.0f, 0.5f);
 		float drawLength = p.lengthFactor * randomLengthFactor / float(divisions) * repetitions;
 		float yaw = uniformGenerator.RandomFloat(0.0f, 45.0f) / float(divisions);
-		float pitch = uniformGenerator.RandomFloat(-10.0f, 10.0f) / float(divisions);
+		float pitch = uniformGenerator.RandomFloat(-15.0f, 15.0f) / float(divisions);
 		while (divisions > 0)
 		{
 			t.Rotate(yaw, pitch);

@@ -37,40 +37,52 @@
 */
 static const bool WINDOW_VSYNC = false;
 static const int WINDOW_FULLSCREEN = 0;
-static const int WINDOW_WIDTH = 640;
-static const int WINDOW_HEIGHT = 480;
+static const int WINDOW_WIDTH = 1280;
+static const int WINDOW_HEIGHT = 720;
 static const float CAMERA_FOV = 90.0f;
 static const float WINDOW_RATIO = WINDOW_WIDTH / float(WINDOW_HEIGHT);
 
 namespace fs = std::filesystem;
 
-void GenerateNewTree(GLLine& skeletonLines, GLTriangleMesh& branchMeshes, UniformRandomGenerator& uniformGenerator, int treeIterations=10, int treeSubdivisions=3)
+void GenerateNewTree(GLLine& skeletonLines, GLTriangleMesh& branchMeshes, GLTriangleMesh& crownLeavesMeshes, const GLTriangleMesh& leafMesh, UniformRandomGenerator& uniformGenerator, int treeIterations=10, int treeSubdivisions=3)
 {
 	skeletonLines.Clear();
 	branchMeshes.Clear();
+	crownLeavesMeshes.Clear();
+
+	float trunkThickness = 0.2f * powf(1.2f, float(treeIterations));
+	float branchScalar = 0.6f;										// how the branch thickness relates to the parent
+	float depthScalar = powf(0.6f, 1.0f / float(treeSubdivisions));	// how much the branch shrinks in thickness the farther from the root it goes (the pow is to counter the subdiv growth)
+	const int trunkCylinderDivisions = 32;
+
+	auto& getBranchThickness = [&](int branchDepth, int nodeDepth) -> float
+	{
+		return trunkThickness * powf(branchScalar, float(branchDepth)) * powf(depthScalar, float(nodeDepth));
+	};
+
+	auto& getCylinderDivisions = [&](int branchDepth) -> int
+	{
+		int cylinderDivisions = int(trunkCylinderDivisions / pow(2, branchDepth));
+		return (cylinderDivisions < 4) ? 6 : cylinderDivisions;
+	};
+
 
 	GenerateFractalTree3D(
 		uniformGenerator,
 		treeIterations,
 		treeSubdivisions,
-		[&skeletonLines, &branchMeshes, treeIterations, treeSubdivisions](Bone<FractalTree3DProps>* root, std::vector<FractalBranch>& branches) -> void
+		[&](Bone<FractalTree3DProps>* root, std::vector<FractalBranch>& branches) -> void
 	{
 		if (!root) return;
 		using TBone = Bone<FractalTree3DProps>;
 
-		float trunkThickness = 0.2f * powf(1.2f, float(treeIterations));
-		float branchScalar = 0.6f;										// how the branch thickness relates to the parent
-		float depthScalar = powf(0.6f, 1.0f / float(treeSubdivisions));	// how much the branch shrinks in thickness the farther from the root it goes (the pow is to counter the subdiv growth)
-		const int trunkCylinderDivisions = 32;
 		for (int b = 0; b < branches.size(); b++)
 		{
-			int cylinderDivisions = int(trunkCylinderDivisions / pow(2, branches[b].depth));
-			cylinderDivisions = (cylinderDivisions < 4) ? 6 : cylinderDivisions;
-
+			int cylinderDivisions = getCylinderDivisions(branches[b].depth);
 			GLTriangleMesh newBranchMesh{ false };
 
 			/*
-				Vertex 
+				Vertex
 				Positions, Normals, Texture Coordinates
 			*/
 			// Create vertex rings around each bone
@@ -80,7 +92,7 @@ void GenerateNewTree(GLLine& skeletonLines, GLTriangleMesh& branchMeshes, Unifor
 			for (int depth = 0; depth < branchNodes.size(); depth++)
 			{
 				auto& bone = branchNodes[depth];
-				float thickness = trunkThickness * powf(branchScalar, float(branches[b].depth)) * powf(depthScalar, float(bone->nodeDepth));
+				float thickness = getBranchThickness(branches[b].depth, bone->nodeDepth);
 				float circumference = 2.0f*PI_f*thickness;
 				texU += bone->length / circumference;
 
@@ -90,7 +102,7 @@ void GenerateNewTree(GLLine& skeletonLines, GLTriangleMesh& branchMeshes, Unifor
 				// Make the branch root blend into its parent a bit. (this makes the branches appear less angular)
 				auto& t = bone->transform;
 				glm::fvec3 position = t.position;
-				if (depth < (treeSubdivisions-1) && branchNodes[0]->parent)
+				if (depth < (treeSubdivisions - 1) && branchNodes[0]->parent)
 				{
 					auto& parent = branchNodes[0]->parent;
 					float blendAlpha = depth / float(treeSubdivisions);
@@ -102,7 +114,7 @@ void GenerateNewTree(GLLine& skeletonLines, GLTriangleMesh& branchMeshes, Unifor
 					glm::fvec3 projectionOnParent = parent->transform.position + glm::dot(u, v) * u * length * blendAlpha;
 
 					position = glm::mix(projectionOnParent, t.position, 0.5f + 0.5f*blendAlpha);
-					thickness = glm::mix(thickness/branchScalar, thickness, 0.4f + 0.6f*blendAlpha);
+					thickness = glm::mix(thickness / branchScalar, thickness, 0.4f + 0.6f*blendAlpha);
 
 					// Blend orientation of cylinder ring to give a spline
 					auto& parentForward = parent->transform.forwardDirection;
@@ -125,7 +137,7 @@ void GenerateNewTree(GLLine& skeletonLines, GLTriangleMesh& branchMeshes, Unifor
 						position + normal * thickness,
 						normal,
 						glm::fvec4{ 1.0f },
-						glm::fvec4{ texU, i/float(cylinderDivisions), 1.0f, 1.0f }
+						glm::fvec4{ texU, i / float(cylinderDivisions), 1.0f, 1.0f }
 					);
 				}
 
@@ -144,7 +156,7 @@ void GenerateNewTree(GLLine& skeletonLines, GLTriangleMesh& branchMeshes, Unifor
 				lastBone->tipPosition(),
 				lastBone->transform.forwardDirection,
 				glm::fvec4{ 1.0f },
-				glm::fvec4{ texU+lastBone->length, 0.5f, 1.0f, 1.0f }
+				glm::fvec4{ texU + lastBone->length, 0.5f, 1.0f, 1.0f }
 			);
 
 
@@ -180,9 +192,38 @@ void GenerateNewTree(GLLine& skeletonLines, GLTriangleMesh& branchMeshes, Unifor
 
 			branchMeshes.AppendMesh(newBranchMesh);
 		}
+
+
+
+
+		/*
+			Generate leaves
+		*/
+		for (auto& branch : branches)
+		{
+			GLTriangleMesh newLeaf{ false };
+			newLeaf.AppendMesh(leafMesh);
+
+			auto& branchNodes = branch.nodes;
+			auto& leafNode = branchNodes[branchNodes.size()-1];
+
+			float thickness = getBranchThickness(branch.depth, leafNode->nodeDepth);
+			float circumference = 2.0f*PI_f*thickness;
+
+			glm::fvec3 tipDir = leafNode->transform.forwardDirection;
+			glm::fvec3 faceDir = leafNode->transform.sideDirection;
+			glm::fvec3 position = leafNode->tipPosition();
+
+			newLeaf.ApplyMatrix(glm::inverse(glm::lookAt(position, position - tipDir, -faceDir)));
+			crownLeavesMeshes.AppendMesh(newLeaf);
+
+			skeletonLines.AddLine(position, position + 0.2f*tipDir, glm::fvec4(0.0f, 1.0f, 0.0f, 1.0f));
+			skeletonLines.AddLine(position, position + 0.2f*faceDir, glm::fvec4(1.0f, 0.0f, 0.0f, 1.0f));
+		}
 	});
 
 	branchMeshes.SendToGPU();
+	crownLeavesMeshes.SendToGPU();
 	skeletonLines.SendToGPU();
 }
 
@@ -234,18 +275,6 @@ int main()
 	phongShader.SetUniformVec4("lightColor", glm::fvec4{1.0f, 1.0f, 1.0f, 1.0f});
 
 	/*
-		Build mesh using Turtle
-	*/
-	GLLine skeletonLines;
-	GLTriangleMesh branchMeshes;
-	auto GenerateRandomTree = [&]() {
-		printf("\r\nGenerating");
-		GenerateNewTree(skeletonLines, branchMeshes, uniformGenerator, 10, 3);
-	};
-	GenerateRandomTree();
-
-
-	/*
 		Build leaf texture using turtle graphics
 	*/
 	int leafTextureSize = 128;
@@ -279,7 +308,7 @@ int main()
 	for (glm::fvec3& p : leafHull)
 	{
 		leafMesh.AddVertex(
-			{ p.x-0.5f, 1.0f-p.y, p.z}, // convert to world coordinate system
+			{ p.x - 0.5f, p.z, 1.0f - p.y}, // convert to world coordinate system (tip points towards x+, face towards z+)
 			leafNormal,
 			{ 1.0f, 0.0f, 0.0f, 1.0f }, // vertex color
 			{ p.x, p.y, 0.0f, 0.0f }	// texture coordinate
@@ -290,6 +319,30 @@ int main()
 		leafMesh.DefineNewTriangle(0, i, i+1);
 	}
 	leafMesh.SendToGPU();
+
+
+	/*
+		Build tree mesh
+	*/
+	GLLine skeletonLines, coordinateReferenceLines;
+	GLTriangleMesh branchMeshes, crownLeavesMeshes;
+	auto GenerateRandomTree = [&]() {
+		printf("\r\nGenerating");
+		GenerateNewTree(skeletonLines, branchMeshes, crownLeavesMeshes, leafMesh, uniformGenerator, 10, 3);
+	};
+	GenerateRandomTree();
+
+	/*
+		Coordinate system reference lines
+	*/
+	glm::fvec3 orientationReferencePoint = glm::fvec3{ 0.0f, 0.0f, 0.0f };
+	glm::fvec3 x = glm::fvec3{ 1.0f, 0.0f, 0.0f };
+	glm::fvec3 y = glm::fvec3{ 0.0f, 1.0f, 0.0f };
+	glm::fvec3 z = glm::fvec3{ 0.0f, 0.0f, 1.0f };
+	coordinateReferenceLines.AddLine(orientationReferencePoint, orientationReferencePoint + x, glm::fvec4(x, 1.0f));
+	coordinateReferenceLines.AddLine(orientationReferencePoint, orientationReferencePoint + y, glm::fvec4(y, 1.0f));
+	coordinateReferenceLines.AddLine(orientationReferencePoint, orientationReferencePoint + z, glm::fvec4(z, 1.0f));
+	coordinateReferenceLines.SendToGPU();
 
 	/*
 		Main application loop
@@ -350,34 +403,39 @@ int main()
 		window.Clear();
 		glPolygonMode(GL_FRONT_AND_BACK, (renderWireframe? GL_LINE : GL_FILL));
 
+		//branchMeshes.transform.scale = glm::vec3(0.5f);
 		glm::mat4 projection = camera.ViewProjectionMatrix();
+		glm::mat4 mvp = projection * branchMeshes.transform.ModelMatrix();
 
 		leafTexture->UseForDrawing();
-		leafShader.UpdateMVP(projection * leafMesh.transform.ModelMatrix());
 		leafShader.Use();
+		leafShader.UpdateMVP(mvp);
+		crownLeavesMeshes.Draw();
 		leafMesh.Draw();
 
 
-		// Tree branches
-		branchMeshes.transform.scale = glm::vec3(0.5f);
 
+		// Tree branches
 		phongShader.Use();
 		glm::vec3 lightPos = glm::vec3(999999.0f);
 		phongShader.SetUniformVec3("cameraPosition", camera.GetPosition());
 		phongShader.SetUniformVec3("lightPosition", lightPos);
-		phongShader.UpdateMVP(projection * branchMeshes.transform.ModelMatrix());
+		phongShader.UpdateMVP(mvp);
 		treeBarkTexture.UseForDrawing();
 		branchMeshes.Draw();
 
-		//lineShader.UpdateMVP(projection);
-		//lineShader.Use();
-		//skeletonLines.Draw();
+		lineShader.UpdateMVP(projection);
+		lineShader.Use();
+		skeletonLines.Draw();
 
 
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		grid.Draw(projection);
 
 		glClear(GL_DEPTH_BUFFER_BIT);
+		lineShader.UpdateMVP(projection);
+		lineShader.Use();
+		coordinateReferenceLines.Draw();
 		leafCanvas.RenderToScreen();
 		window.SwapFramebuffer();
 	}

@@ -25,7 +25,6 @@ glm::mat4 MeshTransform::ModelMatrix()
 }
 
 
-
 GLMeshInterface::GLMeshInterface()
 {
 	glGenVertexArrays(1, &vao);
@@ -160,12 +159,12 @@ void GLTriangleMesh::DefineNewTriangle(unsigned int index1, unsigned int index2,
 	indices.push_back(index3);
 }
 
-void GLTriangleMesh::AppendMesh(GLTriangleMesh& other)
+void GLTriangleMesh::AppendMesh(const GLTriangleMesh& other)
 {
 	// These two values are used to re-calculate the indices of the other mesh
 	// after it has been appended.
-	int newIndicesOffset = positions.size();
-	int newIndicesStart = indices.size();
+	int newIndicesOffset = int(positions.size());
+	int newIndicesStart = int(indices.size());
 
 	positions.reserve(positions.size() + other.positions.size());
 	normals.reserve(normals.size() + other.normals.size());
@@ -182,6 +181,15 @@ void GLTriangleMesh::AppendMesh(GLTriangleMesh& other)
 	for (int i = newIndicesStart; i < indices.size(); ++i)
 	{
 		indices[i] += newIndicesOffset;
+	}
+}
+
+void GLTriangleMesh::ApplyMatrix(glm::mat4 transform)
+{
+	for (int i=0; i<positions.size(); i++)
+	{
+		positions[i] = transform * glm::fvec4(positions[i], 1.0f);
+		normals[i] = transform * glm::fvec4(normals[i], 0.0f);
 	}
 }
 
