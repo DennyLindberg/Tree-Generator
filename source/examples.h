@@ -68,7 +68,7 @@ void GenerateFractalPlant3D(Turtle3D<T>& turtle, UniformRandomGenerator& uniform
 
 struct FractalTree3DProps
 {
-	float lengthFactor = 1.0f;	// How much the bone should grow
+	float lengthFactor = 1.1f;	// How much the bone should grow
 };
 
 struct FractalBranch

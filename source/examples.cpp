@@ -354,6 +354,8 @@ void BuildBranchesForFractalTree3D(std::vector<FractalBranch>& branches, Bone<Fr
 
 void GenerateFractalTree3D(UniformRandomGenerator& uniformGenerator, int iterations, int subdivisions, std::function<void(Bone<FractalTree3DProps>*, std::vector<FractalBranch>&)> onResultCallback)
 {
+	iterations *= 2;
+
 	// https://lazynezumi.com/lsystems
 	LSystemString fractalTree;
 	fractalTree.axiom = "B";
@@ -382,7 +384,7 @@ void GenerateFractalTree3D(UniformRandomGenerator& uniformGenerator, int iterati
 		}
 	};
 	turtle.actions['C'] = turtle.actions['A'];
-	turtle.actions['%'] = [](Turtle& t, int repetitions) { t.transform.properties.lengthFactor /= 1.2f; };
+	turtle.actions['%'] = [](Turtle& t, int repetitions) { t.transform.properties.lengthFactor /= 1.15f; };
 	turtle.actions['['] = [&uniformGenerator](Turtle& t, int repetitions)
 	{
 		t.PushState();
@@ -404,7 +406,7 @@ void GenerateFractalTree3D(UniformRandomGenerator& uniformGenerator, int iterati
 
 		// Weigh down the branch based on length from root
 		glm::fvec3 rotVec = glm::cross(glm::fvec3{ 0.0f, 1.0f, 0.0f }, t.transform.forwardDirection);
-		float degrees = iterations/float(depth) * 5.0f;
+		float degrees = iterations/float(depth) * 3.0f;
 		t.Rotate(degrees, rotVec);
 	};
 

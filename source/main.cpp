@@ -50,9 +50,9 @@ void GenerateNewTree(GLLine& skeletonLines, GLTriangleMesh& branchMeshes, GLTria
 	branchMeshes.Clear();
 	crownLeavesMeshes.Clear();
 
-	float trunkThickness = 0.2f * powf(1.2f, float(treeIterations));
-	float branchScalar = 0.6f;										// how the branch thickness relates to the parent
-	float depthScalar = powf(0.6f, 1.0f / float(treeSubdivisions));	// how much the branch shrinks in thickness the farther from the root it goes (the pow is to counter the subdiv growth)
+	float trunkThickness = 0.5f * powf(1.3f, float(treeIterations));
+	float branchScalar = 0.4f;											// how the branch thickness relates to the parent
+	float depthScalar = powf(0.75f, 1.0f / float(treeSubdivisions));	// how much the branch shrinks in thickness the farther from the root it goes (the pow is to counter the subdiv growth)
 	const int trunkCylinderDivisions = 32;
 
 	auto& getBranchThickness = [&](int branchDepth, int nodeDepth) -> float
@@ -318,6 +318,7 @@ int main()
 	{
 		leafMesh.DefineNewTriangle(0, i, i+1);
 	}
+	leafMesh.ApplyMatrix(glm::scale(glm::mat4{ 1.0f }, glm::fvec3{ 0.5f }));
 	leafMesh.SendToGPU();
 
 
@@ -326,9 +327,9 @@ int main()
 	*/
 	GLLine skeletonLines, coordinateReferenceLines;
 	GLTriangleMesh branchMeshes, crownLeavesMeshes;
-	auto GenerateRandomTree = [&]() {
+	auto GenerateRandomTree = [&](int iterations = 5) {
 		printf("\r\nGenerating");
-		GenerateNewTree(skeletonLines, branchMeshes, crownLeavesMeshes, leafMesh, uniformGenerator, 10, 3);
+		GenerateNewTree(skeletonLines, branchMeshes, crownLeavesMeshes, leafMesh, uniformGenerator, iterations, 3);
 	};
 	GenerateRandomTree();
 
@@ -350,6 +351,7 @@ int main()
 	bool quit = false;
 	bool captureMouse = false;
 	bool renderWireframe = false;
+	int treeIterations = 5;
 	while (!quit)
 	{
 		clock.Tick();
@@ -375,7 +377,11 @@ int main()
 				else if (key == SDLK_5) renderWireframe = false;
 				else if (key == SDLK_s) TakeScreenshot("screenshot.png", WINDOW_WIDTH, WINDOW_HEIGHT);
 				else if (key == SDLK_f) turntable.SnapToOrigin();
-				else if (key == SDLK_g) GenerateRandomTree();
+				else if (key == SDLK_g) GenerateRandomTree(treeIterations);
+				else if (key == SDLK_UP) { GenerateRandomTree(++treeIterations);}
+				else if (key == SDLK_DOWN) { treeIterations = (treeIterations <= 1) ? 1 : treeIterations - 1; GenerateRandomTree(treeIterations); }
+
+				;
 			}
 			else if (event.type == SDL_MOUSEBUTTONDOWN)
 			{
@@ -426,7 +432,7 @@ int main()
 
 		lineShader.UpdateMVP(projection);
 		lineShader.Use();
-		skeletonLines.Draw();
+		//skeletonLines.Draw();
 
 
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
