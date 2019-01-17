@@ -3,6 +3,7 @@
 layout(location = 0) out vec4 color;
 
 uniform sampler2D textureSampler;
+uniform float sssBacksideAmount;
 uniform vec4 lightColor;
 uniform vec3 lightPosition;
 uniform vec3 cameraPosition;
@@ -22,15 +23,19 @@ void main()
     float cameraContrib = clamp(dot(normal, camDir), 0.0, 1.0);
     vec3 ambientLight = cameraContrib * vec3(0.2);
 
-    // Ordinary phong diffuse model
-    float angleContribution = clamp(dot(normal, lightDir), 0.0, 1.0);
+    // Ordinary phong diffuse model with fake SSS
+    float angleContribution = dot(normal, lightDir);
+    float directLightDot = clamp(angleContribution, 0.0, 1.0);
+    float sssLightDot = abs(angleContribution);
+    float directLightContribution = mix(directLightDot, 0.75 + sssLightDot/4.0, sssBacksideAmount);
     float lightStrength = lightColor.a;
-    vec3 diffuseLight = lightStrength * angleContribution * lightColor.rgb;
+    vec3 diffuseLight = lightStrength * directLightContribution * lightColor.rgb;
 
     // Specular not yet implemented
     vec3 specularLight = vec3(0.0);
 
     vec4 totalLightContribution = vec4(ambientLight + diffuseLight + specularLight, 1.0);
 
-    color = totalLightContribution * texture(textureSampler, vTCoord.rg);
+    vec3 texSample = texture(textureSampler, vTCoord.rg).rgb; // ignore alpha
+    color = totalLightContribution * vec4(texSample, 1.0f);
 }

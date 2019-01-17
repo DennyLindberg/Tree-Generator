@@ -70,6 +70,8 @@ public:
 	void AddVertex(glm::fvec3 pos, glm::fvec3 normal, glm::fvec4 color, glm::fvec4 texcoord);
 	void DefineNewTriangle(unsigned int index1, unsigned int index2, unsigned int index3);
 	void AppendMesh(const GLTriangleMesh& other);
+	void AppendMeshTransformed(const GLTriangleMesh& other, glm::mat4 transform);
+	void ApplyMatrix(glm::mat4 transform, int firstIndex, int lastIndex);
 	void ApplyMatrix(glm::mat4 transform);
 };
 

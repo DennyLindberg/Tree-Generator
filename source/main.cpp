@@ -50,11 +50,32 @@ void GenerateNewTree(GLLine& skeletonLines, GLTriangleMesh& branchMeshes, GLTria
 	branchMeshes.Clear();
 	crownLeavesMeshes.Clear();
 
+	/*
+		Tree branch propertes
+	*/
 	float trunkThickness = 0.5f * powf(1.3f, float(treeIterations));
 	float branchScalar = 0.4f;											// how the branch thickness relates to the parent
 	float depthScalar = powf(0.75f, 1.0f / float(treeSubdivisions));	// how much the branch shrinks in thickness the farther from the root it goes (the pow is to counter the subdiv growth)
 	const int trunkCylinderDivisions = 32;
 
+	/*
+		Leaf generation properties
+	*/
+	float leafMinScale = 0.25f;
+	float leafMaxScale = 1.5f;
+	float growthCurve = treeIterations / (1.0f + float(treeIterations));
+	float pruningChance = growthCurve * 2.0f - 1.0f;// Random chance to remove a leaf (chance increases by the number of iterations)
+
+	int leavesPerBranch = 25 - int(20 * (growthCurve * 2.0f - 1.0f));
+	leavesPerBranch = (leavesPerBranch == 0) ? 1 : leavesPerBranch;
+	
+	
+	printf("\r\nIterations: %d, LeavesPerBranch: %d, Pruning: %.2f", treeIterations, leavesPerBranch, pruningChance);
+
+
+	/*
+		Helper functions
+	*/
 	auto& getBranchThickness = [&](int branchDepth, int nodeDepth) -> float
 	{
 		return trunkThickness * powf(branchScalar, float(branchDepth)) * powf(depthScalar, float(nodeDepth));
@@ -199,26 +220,72 @@ void GenerateNewTree(GLLine& skeletonLines, GLTriangleMesh& branchMeshes, GLTria
 		/*
 			Generate leaves
 		*/
+		int maxBranchDepth = 0;
 		for (auto& branch : branches)
 		{
-			GLTriangleMesh newLeaf{ false };
-			newLeaf.AppendMesh(leafMesh);
+			maxBranchDepth = (branch.depth > maxBranchDepth) ? branch.depth : maxBranchDepth;
+		}
+
+		int startDepth = maxBranchDepth - 2;
+		startDepth = (startDepth > 2) ? startDepth : 2;
+
+		for (auto& branch : branches)
+		{
+			if (branch.depth < startDepth) continue;
 
 			auto& branchNodes = branch.nodes;
-			auto& leafNode = branchNodes[branchNodes.size()-1];
+			int lastIndex = branchNodes.size() - 1;
+			int startIndex = int(round(0.25f * lastIndex));
+			for (int i = startIndex; i <= lastIndex; ++i)
+			{
+				auto& leafNode = branchNodes[i];
 
-			float thickness = getBranchThickness(branch.depth, leafNode->nodeDepth);
-			float circumference = 2.0f*PI_f*thickness;
+				glm::fvec3 nodeBegin = leafNode->transform.position;
+				glm::fvec3 nodeEnd = leafNode->tipPosition();
+				glm::fvec3 nodeDirection = leafNode->transform.forwardDirection;
+				glm::fvec3 nodeNormal = leafNode->transform.sideDirection;
 
-			glm::fvec3 tipDir = leafNode->transform.forwardDirection;
-			glm::fvec3 faceDir = leafNode->transform.sideDirection;
-			glm::fvec3 position = leafNode->tipPosition();
+				float thickness = getBranchThickness(branch.depth, leafNode->nodeDepth);
+				float circumference = 2.0f*PI_f*thickness;
 
-			newLeaf.ApplyMatrix(glm::inverse(glm::lookAt(position, position - tipDir, -faceDir)));
-			crownLeavesMeshes.AppendMesh(newLeaf);
+				int leafId = leavesPerBranch;
+				float stepSize = leafNode->length / leavesPerBranch;
+				glm::fvec3 position, direction, normal;
+				while (leafId > 0)
+				{
+					leafId--;
+					if (uniformGenerator.RandomFloat() < pruningChance) continue;
 
-			skeletonLines.AddLine(position, position + 0.2f*tipDir, glm::fvec4(0.0f, 1.0f, 0.0f, 1.0f));
-			skeletonLines.AddLine(position, position + 0.2f*faceDir, glm::fvec4(1.0f, 0.0f, 0.0f, 1.0f));
+					// Compute the leaf placement
+					position = nodeBegin + nodeDirection*(stepSize*leafId + uniformGenerator.RandomFloat(0.0f, stepSize/2.0f));	// spread along branch
+					float angle = uniformGenerator.RandomFloat(0.0f, 2.0f*PI_f);
+					direction = glm::rotate(glm::mat4{ 1.0f }, angle, nodeDirection) * glm::fvec4{ nodeNormal, 1.0f };				// random direction
+					position += direction * thickness;																				// push leaf so that it starts on the branch and not inside it
+					direction = glm::normalize(glm::mix(direction, nodeDirection, uniformGenerator.RandomFloat(0.3f, 0.8f)));		// blend how much the leaf is angled along the branch
+					angle = uniformGenerator.RandomFloat(0.0f, 22.0f* PI_f);
+					normal = glm::rotate(glm::mat4{ 1.0f }, angle, direction) * glm::fvec4{ nodeDirection, 1.0f };					// random twist
+				
+					// Insert the leaf
+					crownLeavesMeshes.AppendMeshTransformed(
+						leafMesh,
+						glm::inverse(glm::lookAt(position, position - direction, -normal)) * glm::scale(glm::mat4{ 1.0f }, glm::fvec3{ uniformGenerator.RandomFloat(leafMinScale, leafMaxScale) })
+					);
+				}
+
+				// Put a leaf at the tip of the branch
+				if (i == lastIndex)
+				{
+					crownLeavesMeshes.AppendMeshTransformed(
+						leafMesh,
+						glm::inverse(glm::lookAt(nodeEnd, nodeEnd - nodeDirection, -nodeNormal)) * glm::scale(glm::mat4{ 1.0f }, glm::fvec3{ uniformGenerator.RandomFloat(leafMinScale, leafMaxScale) })
+					);
+				}
+
+				// Debug orientation lines
+				//skeletonLines.AddLine(nodeEnd, nodeEnd + 0.2f*nodeDirection, glm::fvec4(0.0f, 1.0f, 0.0f, 1.0f));
+				//skeletonLines.AddLine(nodeEnd, nodeEnd + 0.2f*nodeNormal, glm::fvec4(1.0f, 0.0f, 0.0f, 1.0f));
+			}
+
 		}
 	});
 
@@ -272,7 +339,8 @@ int main()
 	shaderManager.LoadShader(lineShader, L"line_vertex.glsl", L"line_fragment.glsl");
 
 	phongShader.Use();
-	phongShader.SetUniformVec4("lightColor", glm::fvec4{1.0f, 1.0f, 1.0f, 1.0f});
+	phongShader.SetUniformVec4("lightColor", glm::fvec4{ 1.0f, 1.0f, 1.0f, 1.0f });
+	leafShader.SetUniformVec4("lightColor", glm::fvec4{ 1.0f, 1.0f, 1.0f, 1.0f });
 
 	/*
 		Build leaf texture using turtle graphics
@@ -410,25 +478,30 @@ int main()
 		glPolygonMode(GL_FRONT_AND_BACK, (renderWireframe? GL_LINE : GL_FILL));
 
 		//branchMeshes.transform.scale = glm::vec3(0.5f);
+		glm::vec3 lightPos = glm::vec3(999999.0f);
 		glm::mat4 projection = camera.ViewProjectionMatrix();
 		glm::mat4 mvp = projection * branchMeshes.transform.ModelMatrix();
 
 		leafTexture->UseForDrawing();
 		leafShader.Use();
+		leafShader.SetUniformFloat("sssBacksideAmount", 0.75f);
+		leafShader.SetUniformVec3("cameraPosition", camera.GetPosition());
+		leafShader.SetUniformVec3("lightPosition", lightPos);
 		leafShader.UpdateMVP(mvp);
+		leafTexture->UseForDrawing();
 		crownLeavesMeshes.Draw();
-		leafMesh.Draw();
 
 
 
 		// Tree branches
 		phongShader.Use();
-		glm::vec3 lightPos = glm::vec3(999999.0f);
+		phongShader.SetUniformFloat("sssBacksideAmount", 0.0f);
 		phongShader.SetUniformVec3("cameraPosition", camera.GetPosition());
 		phongShader.SetUniformVec3("lightPosition", lightPos);
 		phongShader.UpdateMVP(mvp);
 		treeBarkTexture.UseForDrawing();
 		branchMeshes.Draw();
+
 
 		lineShader.UpdateMVP(projection);
 		lineShader.Use();

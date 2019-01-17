@@ -184,13 +184,29 @@ void GLTriangleMesh::AppendMesh(const GLTriangleMesh& other)
 	}
 }
 
-void GLTriangleMesh::ApplyMatrix(glm::mat4 transform)
+void GLTriangleMesh::AppendMeshTransformed(const GLTriangleMesh & other, glm::mat4 transform)
 {
-	for (int i=0; i<positions.size(); i++)
+	int newPositionsStart = int(positions.size());
+	AppendMesh(other);
+	int newPositionsEnd = int(positions.size() - 1);
+	ApplyMatrix(transform, newPositionsStart, newPositionsEnd);
+}
+
+void GLTriangleMesh::ApplyMatrix(glm::mat4 transform, int firstIndex, int lastIndex)
+{
+	firstIndex = (firstIndex < 0)? 0 : firstIndex;
+	lastIndex = (lastIndex >= positions.size()) ? int(positions.size() - 1) : lastIndex;
+
+	for (int i=firstIndex; i<=lastIndex; i++)
 	{
 		positions[i] = transform * glm::fvec4(positions[i], 1.0f);
 		normals[i] = transform * glm::fvec4(normals[i], 0.0f);
 	}
+}
+
+void GLTriangleMesh::ApplyMatrix(glm::mat4 transform)
+{
+	ApplyMatrix(transform, 0, int(positions.size() - 1));
 }
 
 
