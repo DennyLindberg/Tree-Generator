@@ -1,14 +1,11 @@
 #version 330
 
-#define M_PI 3.1415926535897932384626433832795
-
 layout(location = 0) in vec3 vertexPosition;
 layout(location = 1) in vec3 vertexNormal;
 layout(location = 2) in vec4 vertexColor;
 layout(location = 3) in vec4 vertexTCoord;
 
 uniform mat4 mvp;
-uniform float time;
 
 out vec3 vPosition;
 out vec3 vNormal;
@@ -18,15 +15,23 @@ out vec4 vTCoord;
 // Forward declaration
 float cnoise(vec2 P);
 
+// [0 -> 1] => [0 -> 1 -> 0]
+float PingPong(float x)
+{
+    float cutoff = 0.5;
+    float ramp = 2.0*mod(x, cutoff);
+    float halfstep = step(cutoff, mod(x, 1.0f));
+    return ramp*(2.0*halfstep-1.0);
+}
+
 void main()
 {
-    float posxTime = vertexPosition.z + vertexPosition.x + time;
-    float posyTime = vertexPosition.z + vertexPosition.y + time;
-    float noiseLowRate = 0.1f*cnoise(vec2(posxTime, posyTime));
-    float noiseHighRate = 0.03f*cnoise(vec2(posxTime*4.0, posyTime*4.0));
-    vec3 offset = vec3(noiseLowRate + noiseHighRate, noiseLowRate, noiseHighRate);
-    gl_Position = mvp * vec4(vertexPosition + offset, 1.0f);
-    vPosition = vertexPosition;
+    vec2 texUV = 40.0*vertexTCoord.rg;
+    texUV = vec2(texUV.x, PingPong(texUV.y)); // avoid the UV-seam splitting up
+    vec3 modifiedPosition = vertexPosition;// + 0.1f*vertexNormal*cnoise(texUV);
+
+    gl_Position = mvp * vec4(modifiedPosition, 1.0f);
+    vPosition = modifiedPosition;
 
     vNormal = vertexNormal;
 

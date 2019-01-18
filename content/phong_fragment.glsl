@@ -3,7 +3,6 @@
 layout(location = 0) out vec4 color;
 
 uniform sampler2D textureSampler;
-uniform float sssBacksideAmount;
 uniform vec4 lightColor;
 uniform vec3 lightPosition;
 uniform vec3 cameraPosition;

@@ -33,8 +33,8 @@ void main()
     vec4 totalLightContribution = vec4(ambientLight + diffuseLight + specularLight, 1.0);
 
     vec4 texSample = texture(textureSampler, vTCoord.rg);
-    vec4 surfaceColorFront = mix(vec4(0.4f, 0.7f, 0.2f, 1.0f), vec4(0.35f, 0.6f, 0.17f, 1.0f), texSample.a);
-    vec4 surfaceColorBack = mix(vec4(0.1f, 0.4f, 0.2f, 1.0f), vec4(0.05f, 0.2f, 0.05f, 1.0f), texSample.a);
+    vec4 surfaceColorFront = mix(vec4(0.9f, 0.8f, 0.2f, 1.0f), vec4(0.7f, 0.5f, 0.2f, 1.0f), texSample.a);
+    vec4 surfaceColorBack = mix(vec4(0.4f, 0.3f, 0.4f, 1.0f), vec4(0.05f, 0.1f, 0.05f, 1.0f), texSample.a);
     vec4 surfaceColor = mix(surfaceColorFront, surfaceColorBack, backSideFactor);
     color = totalLightContribution * vec4(surfaceColor.rgb, 1.0f);
 }

@@ -35,12 +35,13 @@
 /*
 	Program configurations
 */
-static const bool WINDOW_VSYNC = false;
+static const bool WINDOW_VSYNC = true;
 static const int WINDOW_FULLSCREEN = 0;
 static const int WINDOW_WIDTH = 1280;
 static const int WINDOW_HEIGHT = 720;
 static const float CAMERA_FOV = 90.0f;
 static const float WINDOW_RATIO = WINDOW_WIDTH / float(WINDOW_HEIGHT);
+static const int FPS_LIMIT = 0;
 
 namespace fs = std::filesystem;
 
@@ -326,22 +327,26 @@ int main()
 	GLTexture treeBarkTexture{contentFolder / "opengameart_org_bark-1024-colcor.png"};
 	defaultTexture.UseForDrawing();
 
+	GLQuad backgroundQuad;
+
 	GLGrid grid;
 	grid.size = 20.0f;
 	grid.gridSpacing = 0.5f;
 
-	GLProgram defaultShader, lineShader, leafShader, phongShader;
+	GLProgram defaultShader, lineShader, treeShader, leafShader, phongShader, backgroundShader;
 	ShaderManager shaderManager;
 	shaderManager.InitializeFolder(contentFolder);
 	shaderManager.LoadLiveShader(defaultShader, L"basic_vertex.glsl", L"basic_fragment.glsl");
 	shaderManager.LoadLiveShader(leafShader, L"leaf_vertex.glsl", L"leaf_fragment.glsl");
 	shaderManager.LoadLiveShader(phongShader, L"phong_vertex.glsl", L"phong_fragment.glsl");
+	shaderManager.LoadLiveShader(treeShader, L"tree_vertex.glsl", L"tree_fragment.glsl");
 	shaderManager.LoadShader(lineShader, L"line_vertex.glsl", L"line_fragment.glsl");
+	shaderManager.LoadLiveShader(backgroundShader, L"background_vertex.glsl", L"background_fragment.glsl");
 
-	phongShader.Use();
-	phongShader.SetUniformVec4("lightColor", glm::fvec4{ 1.0f, 1.0f, 1.0f, 1.0f });
-	leafShader.Use();
-	leafShader.SetUniformVec4("lightColor", glm::fvec4{ 1.0f, 1.0f, 1.0f, 1.0f });
+	phongShader.Use(); phongShader.SetUniformVec4("lightColor", glm::fvec4{ 1.0f, 1.0f, 1.0f, 1.0f });
+	treeShader.Use(); treeShader.SetUniformVec4("lightColor", glm::fvec4{ 1.0f, 1.0f, 1.0f, 1.0f });
+	leafShader.Use(); leafShader.SetUniformVec4("lightColor", glm::fvec4{ 1.0f, 1.0f, 1.0f, 1.0f });
+	
 
 	/*
 		Build leaf texture using turtle graphics
@@ -422,11 +427,27 @@ int main()
 	bool renderWireframe = false;
 	int treeIterations = 5;
 	int treeSubdivisions = 3;
+	double lastUpdate = 0.0;
+	double deltaTime = 0.0;
+	double fpsDelta = (FPS_LIMIT == 0) ? 0.0 : (1.0 / FPS_LIMIT);
 	while (!quit)
 	{
 		clock.Tick();
 		SetThreadedTime(clock.time);
-		window.SetTitle("Time: " + TimeString(clock.time) + ", FPS: " + FpsString(clock.deltaTime));
+
+		if (WINDOW_VSYNC || FPS_LIMIT == 0)
+		{
+			deltaTime = clock.deltaTime;
+			lastUpdate = clock.time;
+		}
+		else
+		{
+			deltaTime = clock.time - lastUpdate;
+			if (deltaTime < fpsDelta) continue;
+			lastUpdate = clock.time;
+		}
+
+		window.SetTitle("Time: " + TimeString(clock.time) + ", FPS: " + FpsString(deltaTime));
 		shaderManager.CheckLiveShaders();
 
 		SDL_Event event;
@@ -478,6 +499,10 @@ int main()
 
 		window.Clear();
 
+		backgroundShader.Use();
+		backgroundQuad.Draw();
+		glClear(GL_DEPTH_BUFFER_BIT);
+
 		glPolygonMode(GL_FRONT_AND_BACK, (renderWireframe? GL_LINE : GL_FILL));
 
 		glm::vec3 lightPos = glm::vec3(999999.0f);
@@ -496,10 +521,10 @@ int main()
 
 		// Tree branches
 		treeBarkTexture.UseForDrawing();
-		phongShader.Use();
-		phongShader.SetUniformVec3("cameraPosition", camera.GetPosition());
-		phongShader.SetUniformVec3("lightPosition", lightPos);
-		phongShader.UpdateMVP(mvp);
+		treeShader.Use();
+		treeShader.SetUniformVec3("cameraPosition", camera.GetPosition());
+		treeShader.SetUniformVec3("lightPosition", lightPos);
+		treeShader.UpdateMVP(mvp);
 		branchMeshes.Draw();
 
 
