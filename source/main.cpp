@@ -313,6 +313,27 @@ int main()
 	window.SetTitle("Plant Generation");
 	window.SetClearColor(0.5f, 0.5f, 0.5f, 1.0f);
 
+printf(R"(
+====================================================================
+	
+	L-system Tree Generator.
+
+	Controls:
+		Mouse controls the camera. (L: Rotate, M: Move, R: Zoom)
+
+		G:				Generate new tree with current settings
+		Up arrow:		Increase L-system iterations (bigger tree)
+		Down arrow:		Decrease L-system iterations (smaller tree)
+		Left arrow:		Decrease branch divisions
+		Right arrow:	Increase branch divisions
+
+	Please note that iterations greater than 6 takes a long time.
+	The application will not refresh during generations and will
+	appear to "hang".
+
+====================================================================
+)");
+
 	GLuint defaultVao = 0;
 	glGenVertexArrays(1, &defaultVao);
 	glBindVertexArray(defaultVao);
