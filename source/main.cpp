@@ -340,9 +340,9 @@ printf(R"(
 
 	Camera camera;
 	TurntableController turntable(camera);
-	turntable.position = glm::vec3{0.0f, 3.0f, 0.0f};
+	turntable.position = glm::vec3{0.0f, 7.0f, 0.0f};
 	turntable.sensitivity = 0.25f;
-	turntable.Set(-45.0f, 25.0f, 7.0f);
+	turntable.Set(-25.0f, 15.0f, 15.0f);
 
 	GLTexture defaultTexture{contentFolder / "default.png"};
 	GLTexture treeBarkTexture{contentFolder / "opengameart_org_bark-1024-colcor.png"};
@@ -357,12 +357,12 @@ printf(R"(
 	GLProgram defaultShader, lineShader, treeShader, leafShader, phongShader, backgroundShader;
 	ShaderManager shaderManager;
 	shaderManager.InitializeFolder(contentFolder);
-	shaderManager.LoadLiveShader(defaultShader, L"basic_vertex.glsl", L"basic_fragment.glsl");
-	shaderManager.LoadLiveShader(leafShader, L"leaf_vertex.glsl", L"leaf_fragment.glsl");
-	shaderManager.LoadLiveShader(phongShader, L"phong_vertex.glsl", L"phong_fragment.glsl");
-	shaderManager.LoadLiveShader(treeShader, L"tree_vertex.glsl", L"tree_fragment.glsl");
+	shaderManager.LoadShader(defaultShader, L"basic_vertex.glsl", L"basic_fragment.glsl");
+	shaderManager.LoadShader(leafShader, L"leaf_vertex.glsl", L"leaf_fragment.glsl");
+	shaderManager.LoadShader(phongShader, L"phong_vertex.glsl", L"phong_fragment.glsl");
+	shaderManager.LoadShader(treeShader, L"tree_vertex.glsl", L"tree_fragment.glsl");
 	shaderManager.LoadShader(lineShader, L"line_vertex.glsl", L"line_fragment.glsl");
-	shaderManager.LoadLiveShader(backgroundShader, L"background_vertex.glsl", L"background_fragment.glsl");
+	shaderManager.LoadShader(backgroundShader, L"background_vertex.glsl", L"background_fragment.glsl");
 
 	phongShader.Use(); phongShader.SetUniformVec4("lightColor", glm::fvec4{ 1.0f, 1.0f, 1.0f, 1.0f });
 	treeShader.Use(); treeShader.SetUniformVec4("lightColor", glm::fvec4{ 1.0f, 1.0f, 1.0f, 1.0f });
