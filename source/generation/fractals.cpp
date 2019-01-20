@@ -1,5 +1,5 @@
 #include "fractals.h"
-#include "thirdparty/glmGeom.h"
+#include "../thirdparty/glmGeom.h"
 
 using BasicTurtle2D = Turtle2D<>;
 

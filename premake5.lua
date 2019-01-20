@@ -36,6 +36,7 @@ workspace "Plant Generator"
 
     entrypoint "mainCRTStartup"     -- force Windows-executables to use main instead of WinMain as entry point   
     symbolspath '$(TargetName).pdb'
+    staticruntime "on"
 
     debugdir(binaries_folder)
     includedirs { includes_folder }
@@ -59,16 +60,16 @@ workspace "Plant Generator"
 project "L-system 3D"
     kind "ConsoleApp"
     targetdir(binaries_folder)
-    targetname("plants3d")
+    targetname("tree3d")
     files ({source_folder .. "**.h", source_folder .. "**.c", source_folder .. "**.cpp"})
     removefiles{ source_folder .. "main*.cpp"}
-    files ({source_folder .. "main.cpp"})
+    files ({source_folder .. "main_3d.cpp"})
     
 project "L-system 2D"
     kind "ConsoleApp"
     targetdir(binaries_folder)
-    targetname("plants2d")
+    targetname("fractals2d")
     files ({source_folder .. "**.h", source_folder .. "**.c", source_folder .. "**.cpp"})
     removefiles{ source_folder .. "main*.cpp"}
-    files ({source_folder .. "main_2d_lsystem.cpp"})
+    files ({source_folder .. "main_2d.cpp"})
     

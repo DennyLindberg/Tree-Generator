@@ -1,5 +1,5 @@
 #pragma once
-#include "core/math.h"
+#include "math.h"
 
 enum class TurntableInputState
 {

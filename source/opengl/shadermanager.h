@@ -1,7 +1,6 @@
 #pragma once
-#include "opengl/program.h"
-#include "core/math.h"
-#include "core/filelistener.h"
+#include "program.h"
+#include "../core/filelistener.h"
 #include <string>
 #include <filesystem>
 

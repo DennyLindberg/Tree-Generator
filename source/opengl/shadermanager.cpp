@@ -1,5 +1,5 @@
 #include "shadermanager.h"
-#include "core/utilities.h"
+#include "../core/utilities.h"
 
 namespace fs = std::filesystem;
 

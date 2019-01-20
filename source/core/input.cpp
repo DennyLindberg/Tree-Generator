@@ -1,5 +1,5 @@
 #include "input.h"
-#include "opengl/camera.h"
+#include "../opengl/camera.h"
 
 TurntableController::TurntableController(Camera& controlledCamera)
 {

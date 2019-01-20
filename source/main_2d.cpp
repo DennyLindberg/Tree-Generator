@@ -15,16 +15,16 @@
 #include "opengl/texture.h"
 #include "opengl/program.h"
 #include "opengl/screenshot.h"
+#include "opengl/canvas.h"
 #include "core/application.h"
 #include "core/clock.h"
 #include "core/randomization.h"
 #include "core/threads.h"
 #include "core/utilities.h"
 
-#include "canvas.h"
-#include "turtle2d.h"
-#include "lsystem.h"
-#include "fractals.h"
+#include "generation/turtle2d.h"
+#include "generation/lsystem.h"
+#include "generation/fractals.h"
 
 /*
 	Program configurations

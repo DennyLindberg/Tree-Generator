@@ -1,6 +1,6 @@
 #pragma once
-#include "canvas.h"
-#include "core/math.h"
+#include "../opengl/canvas.h"
+#include "../core/math.h"
 #include <map>
 #include <stack>
 #include <functional>

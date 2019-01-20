@@ -1,8 +1,9 @@
 #pragma once
-#include "opengl/texture.h"
-#include "opengl/mesh.h"
-#include "core/math.h"
+#include <algorithm>
 #include <memory>
+#include "texture.h"
+#include "mesh.h"
+#include "../core/math.h"
 
 class Canvas2D
 {
