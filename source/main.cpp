@@ -28,7 +28,7 @@
 #include "canvas.h"
 #include "turtle3d.h"
 #include "lsystem.h"
-#include "examples.h"
+#include "fractals.h"
 #include "input.h"
 #include "shadermanager.h"
 
@@ -37,15 +37,15 @@
 */
 static const bool WINDOW_VSYNC = true;
 static const int WINDOW_FULLSCREEN = 0;
-static const int WINDOW_WIDTH = 1280;
-static const int WINDOW_HEIGHT = 720;
+static const int WINDOW_WIDTH = 1920;
+static const int WINDOW_HEIGHT = 1080;
 static const float CAMERA_FOV = 90.0f;
 static const float WINDOW_RATIO = WINDOW_WIDTH / float(WINDOW_HEIGHT);
 static const int FPS_LIMIT = 0;
 
 namespace fs = std::filesystem;
 
-void GenerateNewTree(GLLine& skeletonLines, GLTriangleMesh& branchMeshes, GLTriangleMesh& crownLeavesMeshes, const GLTriangleMesh& leafMesh, UniformRandomGenerator& uniformGenerator, int treeIterations=10, int treeSubdivisions=3)
+void GenerateNewTree(TreeStyle style, GLLine& skeletonLines, GLTriangleMesh& branchMeshes, GLTriangleMesh& crownLeavesMeshes, const GLTriangleMesh& leafMesh, UniformRandomGenerator& uniformGenerator, int treeIterations=10, int treeSubdivisions=3)
 {
 	skeletonLines.Clear();
 	branchMeshes.Clear();
@@ -88,9 +88,11 @@ void GenerateNewTree(GLLine& skeletonLines, GLTriangleMesh& branchMeshes, GLTria
 
 
 	GenerateFractalTree3D(
+		style,
 		uniformGenerator,
 		treeIterations,
 		treeSubdivisions,
+		true,
 		[&](Bone<FractalTree3DProps>* root, std::vector<FractalBranch>& branches) -> void
 	{
 		if (!root) return;
@@ -116,8 +118,11 @@ void GenerateNewTree(GLLine& skeletonLines, GLTriangleMesh& branchMeshes, GLTria
 				float circumference = 2.0f*PI_f*thickness;
 				texU += bone->length / circumference;
 
-				glm::fvec3 localX = bone->transform.sideDirection;
-				glm::fvec3 localY = bone->transform.forwardDirection;
+				skeletonLines.AddLine(bone->transform.position, bone->tipPosition(), glm::fvec4(0.0f, 1.0f, 0.0f, 1.0f));
+				//skeletonLines.AddLine(bone->transform.position, bone->transform.position+bone->transform.up, glm::fvec4(1.0f, 0.0f, 0.0f, 1.0f));
+
+				glm::fvec3 localX = bone->transform.up;
+				glm::fvec3 localY = bone->transform.forward;
 
 				// Make the branch root blend into its parent a bit. (this makes the branches appear less angular)
 				auto& t = bone->transform;
@@ -127,7 +132,7 @@ void GenerateNewTree(GLLine& skeletonLines, GLTriangleMesh& branchMeshes, GLTria
 					auto& parent = branchNodes[0]->parent;
 					float blendAlpha = depth / float(treeSubdivisions);
 
-					glm::fvec3 u = parent->transform.forwardDirection;
+					glm::fvec3 u = parent->transform.forward;
 					glm::fvec3 v = bone->transform.position - parent->transform.position;
 					float length = glm::length(v);
 					v /= length;
@@ -137,8 +142,8 @@ void GenerateNewTree(GLLine& skeletonLines, GLTriangleMesh& branchMeshes, GLTria
 					thickness = glm::mix(thickness / branchScalar, thickness, 0.4f + 0.6f*blendAlpha);
 
 					// Blend orientation of cylinder ring to give a spline
-					auto& parentForward = parent->transform.forwardDirection;
-					auto& boneForward = bone->transform.forwardDirection;
+					auto& parentForward = parent->transform.forward;
+					auto& boneForward = bone->transform.forward;
 					localY = glm::normalize(glm::mix(parentForward, boneForward, blendAlpha));
 					glm::fvec3 rotationVector = glm::normalize(glm::cross(boneForward, localY));
 					float angle = glm::acos(glm::dot(boneForward, localY));
@@ -174,7 +179,7 @@ void GenerateNewTree(GLLine& skeletonLines, GLTriangleMesh& branchMeshes, GLTria
 			auto& lastBone = branchNodes.back();
 			newBranchMesh.AddVertex(
 				lastBone->tipPosition(),
-				lastBone->transform.forwardDirection,
+				lastBone->transform.forward,
 				glm::fvec4{ 1.0f },
 				glm::fvec4{ texU + lastBone->length, 0.5f, 1.0f, 1.0f }
 			);
@@ -241,8 +246,8 @@ void GenerateNewTree(GLLine& skeletonLines, GLTriangleMesh& branchMeshes, GLTria
 
 				glm::fvec3 nodeBegin = leafNode->transform.position;
 				glm::fvec3 nodeEnd = leafNode->tipPosition();
-				glm::fvec3 nodeDirection = leafNode->transform.forwardDirection;
-				glm::fvec3 nodeNormal = leafNode->transform.sideDirection;
+				glm::fvec3 nodeDirection = leafNode->transform.forward;
+				glm::fvec3 nodeNormal = leafNode->transform.up;
 
 				float thickness = getBranchThickness(branch.depth, leafNode->nodeDepth);
 				float circumference = 2.0f*PI_f*thickness;
@@ -292,7 +297,7 @@ void GenerateNewTree(GLLine& skeletonLines, GLTriangleMesh& branchMeshes, GLTria
 	crownLeavesMeshes.SendToGPU();
 	skeletonLines.SendToGPU();
 
-	printf("\r\n\tDone! LeavesPerBranch: %d, Pruning: %.2f\r\n", leavesPerBranch, pruningChance);
+	printf("Done! LeavesPerBranch: %d, Pruning: %.2f", leavesPerBranch, pruningChance);
 }
 
 
@@ -316,20 +321,29 @@ int main()
 printf(R"(
 ====================================================================
 	
-	L-system Tree Generator.
+    L-system Tree Generator.
 
-	Controls:
-		Mouse controls the camera. (L: Rotate, M: Move, R: Zoom)
+    Controls:
+        Mouse controls the camera. (L: Rotate, M: Move, R: Zoom)
 
-		G:				Generate new tree with current settings
-		Up arrow:		Increase L-system iterations (bigger tree)
-		Down arrow:		Decrease L-system iterations (smaller tree)
-		Left arrow:		Decrease branch divisions
-		Right arrow:	Increase branch divisions
+        4:              Display wireframe surfaces
+        5:              Display textured surfaces
+        F:              Re-center camera on origin
 
-	Please note that iterations greater than 6 takes a long time.
-	The application will not refresh during generations and will
-	appear to "hang".
+        S:              Take screenshot
+
+        G:              Generate new tree with current settings
+        T:              Toggle between default and slimmer tree style
+        Up arrow:       Increase L-system iterations (bigger tree)
+        Down arrow:     Decrease L-system iterations (smaller tree)
+        Left arrow:     Decrease branch divisions
+        Right arrow:    Increase branch divisions
+
+        ESC:            Close the application
+
+    Please note that iterations greater than 6 takes a long time.
+    The application will not refresh during generations and will
+    appear to "hang".
 
 ====================================================================
 )");
@@ -357,12 +371,12 @@ printf(R"(
 	GLProgram defaultShader, lineShader, treeShader, leafShader, phongShader, backgroundShader;
 	ShaderManager shaderManager;
 	shaderManager.InitializeFolder(contentFolder);
-	shaderManager.LoadShader(defaultShader, L"basic_vertex.glsl", L"basic_fragment.glsl");
-	shaderManager.LoadShader(leafShader, L"leaf_vertex.glsl", L"leaf_fragment.glsl");
-	shaderManager.LoadShader(phongShader, L"phong_vertex.glsl", L"phong_fragment.glsl");
-	shaderManager.LoadShader(treeShader, L"tree_vertex.glsl", L"tree_fragment.glsl");
-	shaderManager.LoadShader(lineShader, L"line_vertex.glsl", L"line_fragment.glsl");
-	shaderManager.LoadShader(backgroundShader, L"background_vertex.glsl", L"background_fragment.glsl");
+	shaderManager.LoadLiveShader(defaultShader, L"basic_vertex.glsl", L"basic_fragment.glsl");
+	shaderManager.LoadLiveShader(leafShader, L"leaf_vertex.glsl", L"leaf_fragment.glsl");
+	shaderManager.LoadLiveShader(phongShader, L"phong_vertex.glsl", L"phong_fragment.glsl");
+	shaderManager.LoadLiveShader(treeShader, L"phong_vertex.glsl", L"tree_fragment.glsl");
+	shaderManager.LoadLiveShader(lineShader, L"line_vertex.glsl", L"line_fragment.glsl");
+	shaderManager.LoadLiveShader(backgroundShader, L"background_vertex.glsl", L"background_fragment.glsl");
 
 	phongShader.Use(); phongShader.SetUniformVec4("lightColor", glm::fvec4{ 1.0f, 1.0f, 1.0f, 1.0f });
 	treeShader.Use(); treeShader.SetUniformVec4("lightColor", glm::fvec4{ 1.0f, 1.0f, 1.0f, 1.0f });
@@ -388,6 +402,7 @@ printf(R"(
 		leafCanvas.DrawLine(leafHull[i - 1], leafHull[i], leafLineColor);
 	}
 	leafCanvas.DrawLine(leafHull.back(), leafHull[0], leafLineColor);
+	leafCanvas.GetTexture()->CopyToGPU();
 
 	/*
 		Create leaf mesh by converting turtle graphics to vertices and UV coordinates.
@@ -422,9 +437,9 @@ printf(R"(
 	*/
 	GLLine skeletonLines, coordinateReferenceLines;
 	GLTriangleMesh branchMeshes, crownLeavesMeshes;
-	auto GenerateRandomTree = [&](int iterations = 5, int subdivisions = 3) {
-		printf("\r\nGenerating for %d iterations and %d subdivisions", iterations, subdivisions);
-		GenerateNewTree(skeletonLines, branchMeshes, crownLeavesMeshes, leafMesh, uniformGenerator, iterations, subdivisions);
+	auto GenerateRandomTree = [&](TreeStyle style = TreeStyle::Default, int iterations = 5, int subdivisions = 3) {
+		printf("\r\nGenerating %s (%d iterations, %d subdivisions)... ", (style == TreeStyle::Default) ? "tree" : "slimmer tree", iterations, subdivisions);
+		GenerateNewTree(style, skeletonLines, branchMeshes, crownLeavesMeshes, leafMesh, uniformGenerator, iterations, subdivisions);
 	};
 	GenerateRandomTree();
 
@@ -446,6 +461,7 @@ printf(R"(
 	bool quit = false;
 	bool captureMouse = false;
 	bool renderWireframe = false;
+	TreeStyle treeStyle = TreeStyle::Default;
 	int treeIterations = 5;
 	int treeSubdivisions = 3;
 	double lastUpdate = 0.0;
@@ -468,7 +484,7 @@ printf(R"(
 			lastUpdate = clock.time;
 		}
 
-		window.SetTitle("Time: " + TimeString(clock.time) + ", FPS: " + FpsString(deltaTime));
+		window.SetTitle("FPS: " + FpsString(deltaTime));
 		shaderManager.CheckLiveShaders();
 
 		SDL_Event event;
@@ -489,11 +505,26 @@ printf(R"(
 				else if (key == SDLK_5) renderWireframe = false;
 				else if (key == SDLK_s) TakeScreenshot("screenshot.png", WINDOW_WIDTH, WINDOW_HEIGHT);
 				else if (key == SDLK_f) turntable.SnapToOrigin();
-				else if (key == SDLK_g) GenerateRandomTree(treeIterations, treeSubdivisions);
-				else if (key == SDLK_UP) { GenerateRandomTree(++treeIterations, treeSubdivisions);}
-				else if (key == SDLK_DOWN) { treeIterations = (treeIterations <= 1) ? 1 : treeIterations - 1; GenerateRandomTree(treeIterations, treeSubdivisions); }
-				else if (key == SDLK_LEFT) { treeSubdivisions = (treeSubdivisions <= 1) ? 1 : treeSubdivisions - 1; GenerateRandomTree(treeIterations, treeSubdivisions); }
-				else if (key == SDLK_RIGHT) { GenerateRandomTree(treeIterations, ++treeSubdivisions); }
+				else if (key == SDLK_t)		treeStyle = (treeStyle == TreeStyle::Default) ? TreeStyle::Slim : TreeStyle::Default;
+				else if (key == SDLK_UP)    ++treeIterations;
+				else if (key == SDLK_DOWN)  treeIterations = (treeIterations <= 1) ? 1 : treeIterations - 1;
+				else if (key == SDLK_LEFT)  treeSubdivisions = (treeSubdivisions <= 1) ? 1 : treeSubdivisions - 1;
+				else if (key == SDLK_RIGHT) ++treeSubdivisions;
+
+				switch (key)
+				{
+				case SDLK_g:
+				case SDLK_t:
+				case SDLK_UP:
+				case SDLK_DOWN:
+				case SDLK_LEFT:
+				case SDLK_RIGHT:
+				{
+					// For all cases above
+					GenerateRandomTree(treeStyle, treeIterations, treeSubdivisions);
+				}
+				default: { break; }
+				}
 			}
 			else if (event.type == SDL_MOUSEBUTTONDOWN)
 			{
@@ -555,8 +586,9 @@ printf(R"(
 		glClear(GL_DEPTH_BUFFER_BIT);
 		lineShader.UpdateMVP(projection);
 		lineShader.Use();
+		//skeletonLines.Draw();
 		coordinateReferenceLines.Draw();
-		leafCanvas.RenderToScreen();
+		//leafCanvas.RenderToScreen();
 
 		window.SwapFramebuffer();
 	}

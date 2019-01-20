@@ -23,14 +23,7 @@ void GenerateFractalPlant3D(Turtle3D<T>& turtle, UniformRandomGenerator& uniform
 	fractalTree.axiom = "0";
 	fractalTree.productionRules['0'] = [&uniformGenerator]() -> std::string
 	{
-		std::string result = "1[0]";
-
-		if (uniformGenerator.RandomFloat() < 0.5f)
-		{
-			result += "[0]";
-		}
-
-		return result + "0";
+		return (uniformGenerator.RandomFloat() < 0.5f) ? "1[0][0]0" : "1[0]0";
 	};
 	fractalTree.productionRules['1'] = [&uniformGenerator]() -> std::string
 	{
@@ -95,4 +88,9 @@ struct FractalBranch
 	}
 };
 
-void GenerateFractalTree3D(UniformRandomGenerator& uniformGenerator, int iterations, int subdivisions, std::function<void(Bone<FractalTree3DProps>*, std::vector<FractalBranch>&)> onResultCallback);
+enum class TreeStyle
+{
+	Default,
+	Slim
+};
+void GenerateFractalTree3D(TreeStyle style, UniformRandomGenerator& uniformGenerator, int iterations, int subdivisions, float applyRandomness, std::function<void(Bone<FractalTree3DProps>*, std::vector<FractalBranch>&)> onResultCallback);

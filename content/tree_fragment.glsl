@@ -41,7 +41,7 @@ float BarkRegions(vec2 texUV)
 
 vec3 TreeBarkPattern(vec3 position, vec2 texUV, float tiling)
 {
-    float lengthFactor = 0.2;
+    float lengthFactor = 1.0;
 
     texUV = vec2(lengthFactor, 1.0) * texUV;
     vec2 treeUV = tiling*texUV;
@@ -59,9 +59,9 @@ vec3 TreeBarkPattern(vec3 position, vec2 texUV, float tiling)
 
     vec3 baseColor = 1.5*vec3(0.35f, 0.3f, 0.2f);
 
-    vec3 groves = baseColor*barkTopPattern;
+    vec3 grooves = baseColor*barkTopPattern;
     vec3 surfaces = baseColor;
-    vec3 color = mix(groves, surfaces, barkMask);
+    vec3 color = mix(grooves, surfaces, barkMask);
 
     /* 
         Layer 2 streaks
@@ -96,7 +96,7 @@ vec3 TreeBarkPattern(vec3 position, vec2 texUV, float tiling)
     return vec3(color);
 }
 
-float TreeGroves(vec2 texUV, float tiling)
+float Treegrooves(vec2 texUV, float tiling)
 {
     float lengthFactor = 0.2;
     texUV = vec2(lengthFactor, 1.0) * texUV;
@@ -112,8 +112,8 @@ void main()
         Color calculations
     */
     //vec3 diffuseColor = texture(textureSampler, vTCoord.gr).rgb;
-    vec3 diffuseColor = TreeBarkPattern(vPosition, vTCoord.rg, 25.0);
-    float groves = TreeGroves(vTCoord.rg, 25.0);
+    vec3 diffuseColor = TreeBarkPattern(vPosition, vTCoord.rg, 30.0);
+    float grooves = Treegrooves(vTCoord.rg, 30.0);
 
     /*
         Light calculations
@@ -136,7 +136,7 @@ void main()
     vec3 totalLightContribution = ambientLight + diffuseLight + specularLight;
 
     // Fake ambient occlusion
-    totalLightContribution = mix(totalLightContribution*0.4, totalLightContribution, groves);
+    totalLightContribution = mix(totalLightContribution*0.4, totalLightContribution, grooves);
     float branchShadow = (1.0-0.2*clamp(vTCoord.r/5.0, 0.0, 1.0));
     totalLightContribution = branchShadow * totalLightContribution;
 

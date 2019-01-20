@@ -9,15 +9,15 @@ template<class OptionalState = int>
 struct TurtleTransform
 {
 	glm::fvec3 position = glm::fvec3{ 0.0f };
-	glm::fvec3 forwardDirection = glm::fvec3{ 0.0f, 1.0f, 0.0f }; // normalized, orthogonal, "up" basis vector. Local Y+ defined in world space coordinates.
-	glm::fvec3 sideDirection = glm::fvec3{ 0.0f, 0.0f, 1.0f }; // normalized, orthogonal, "side" basis vector. Local Z+ defined in world space coordinates.
+	glm::fvec3 forward = glm::fvec3{ 0.0f, 1.0f, 0.0f }; // the direction the turtle is travelling (Y+ by default)
+	glm::fvec3 up = glm::fvec3{ 0.0f, 0.0f, 1.0f };	     // orthogonal to the forward direction, used for orientation (Z+ by default) 
 	OptionalState properties;
 
 	void Clear()
 	{
 		position = glm::fvec3{ 0.0f };
-		forwardDirection = glm::fvec3{ 0.0f, 1.0f, 0.0f };
-		sideDirection = glm::fvec3{ 0.0f, 0.0f, 1.0f };
+		forward = glm::fvec3{ 0.0f, 1.0f, 0.0f };
+		up = glm::fvec3{ 0.0f, 0.0f, 1.0f };
 	}
 };
 
@@ -44,7 +44,7 @@ struct Bone
 
 	glm::fvec3 tipPosition()
 	{
-		return transform.position + transform.forwardDirection*length;
+		return transform.position + transform.forward*length;
 	}
 
 	void Clear()
@@ -201,32 +201,31 @@ public:
 		branchStack.pop();
 	}
 
-	// Angles are related to the forward and side basis vectors.
-	// Yaw is applied first.
-	void Rotate(float yawDegrees, float pitchDegrees)
+	// Angles are related to the forward and up basis vectors. (Roll is applied first)
+	void Rotate(float rollDegrees, float pitchDegrees)
 	{
 		glm::mat4 identity{ 1 };
 
-		// Twist the forward direction
-		auto yawRot = glm::rotate(identity, glm::radians(yawDegrees), transform.forwardDirection);
-		transform.sideDirection = yawRot * glm::fvec4(transform.sideDirection, 0.0f);
+		// Roll the forward direction
+		auto rollRot = glm::rotate(identity, glm::radians(rollDegrees), transform.forward);
+		transform.up = rollRot * glm::fvec4(transform.up, 0.0f);
 
-		// Change the up/down angle of the forward direction and side direction
-		glm::fvec3 pitchVector = glm::cross(transform.forwardDirection, transform.sideDirection);
+		// Change the up/down angle of the forward direction and up direction
+		glm::fvec3 pitchVector = glm::cross(transform.forward, transform.up);
 		Rotate(pitchDegrees, pitchVector);
 	}
 
 	void Rotate(float degrees, glm::fvec3 rotateVector)
 	{
 		auto rotateMatrix = glm::rotate(glm::mat4{ 1.0f }, glm::radians(degrees), rotateVector);
-		transform.forwardDirection = rotateMatrix * glm::fvec4(transform.forwardDirection, 0.0f);
-		transform.sideDirection = rotateMatrix * glm::fvec4(transform.sideDirection, 0.0f);
+		transform.forward = rotateMatrix * glm::fvec4(transform.forward, 0.0f);
+		transform.up = rotateMatrix * glm::fvec4(transform.up, 0.0f);
 	}
 
 	void MoveForward(float distance)
 	{
 		PushBone(distance);
-		transform.position += transform.forwardDirection*distance;
+		transform.position += transform.forward*distance;
 	}
 
 	void PushBone(float length)
@@ -264,7 +263,7 @@ public:
 			);
 			lines.AddLine(
 				b->transform.position,
-				b->transform.position + b->transform.sideDirection*0.2f,
+				b->transform.position + b->transform.up*0.2f,
 				normalColor
 			);
 		});

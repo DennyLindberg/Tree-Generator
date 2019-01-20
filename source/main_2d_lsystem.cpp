@@ -24,7 +24,7 @@
 #include "canvas.h"
 #include "turtle2d.h"
 #include "lsystem.h"
-#include "examples.h"
+#include "fractals.h"
 
 /*
 	Program configurations
